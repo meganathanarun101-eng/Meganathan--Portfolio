@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ExternalLink, Github } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import p1 from "@/assets/p1.jpg";
@@ -9,19 +9,22 @@ import p5 from "@/assets/p5.jpg";
 import p6 from "@/assets/p6.jpg";
 import { Reveal, Section } from "./primitives";
 import { cn } from "@/lib/utils";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
-type Project = {
+type ProjectDisplay = {
+  id: string;
   title: string;
   blurb: string;
   image: string;
   tags: string[];
-  category: "Full Stack" | "Frontend" | "AI";
+  category: string;
   demo: string;
   repo: string;
 };
 
-const PROJECTS: Project[] = [
+const DEFAULT_PROJECTS: ProjectDisplay[] = [
   {
+    id: "proj-1",
     title: "Student Job Finder",
     blurb: "Job discovery platform matching students to internships with smart filters and alerts.",
     image: p1,
@@ -31,6 +34,7 @@ const PROJECTS: Project[] = [
     repo: "https://github.com/meganathan-r/student-job-finder",
   },
   {
+    id: "proj-2",
     title: "Portfolio Website",
     blurb: "This site — a glassmorphic, motion-first personal portfolio built for speed.",
     image: p2,
@@ -40,6 +44,7 @@ const PROJECTS: Project[] = [
     repo: "https://github.com/meganathan-r/portfolio",
   },
   {
+    id: "proj-3",
     title: "AI Chatbot",
     blurb: "Context-aware assistant with streaming responses and document retrieval.",
     image: p3,
@@ -49,6 +54,7 @@ const PROJECTS: Project[] = [
     repo: "https://github.com/meganathan-r/ai-chatbot",
   },
   {
+    id: "proj-4",
     title: "E-Commerce Website",
     blurb: "Storefront with cart, payments, order tracking and an admin inventory panel.",
     image: p4,
@@ -58,6 +64,7 @@ const PROJECTS: Project[] = [
     repo: "https://github.com/meganathan-r/ecommerce",
   },
   {
+    id: "proj-5",
     title: "College Management System",
     blurb: "Attendance, results and staff workflows unified in one role-based dashboard.",
     image: p5,
@@ -67,6 +74,7 @@ const PROJECTS: Project[] = [
     repo: "https://github.com/meganathan-r/college-management",
   },
   {
+    id: "proj-6",
     title: "Weather App",
     blurb: "Location-aware forecasts with animated conditions and offline caching.",
     image: p6,
@@ -77,11 +85,34 @@ const PROJECTS: Project[] = [
   },
 ];
 
-const FILTERS = ["All", "Full Stack", "Frontend", "AI"] as const;
-
 export function Projects() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
-  const list = PROJECTS.filter((p) => filter === "All" || p.category === filter);
+  const { projects } = useAdminData();
+
+  const publishedProjects: ProjectDisplay[] = useMemo(() => {
+    const list = projects?.filter((p) => p.status === "published" || !p.status);
+    if (list && list.length > 0) {
+      return list.map((p) => ({
+        id: p.id,
+        title: p.title,
+        blurb: p.shortDescription || p.fullDescription || "",
+        image: p.image || p1,
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        category: p.category || "Full Stack",
+        demo: p.demoUrl || "",
+        repo: p.githubUrl || "",
+      }));
+    }
+    return DEFAULT_PROJECTS;
+  }, [projects]);
+
+  const filterCategories = useMemo(() => {
+    const unique = Array.from(new Set(publishedProjects.map((p) => p.category).filter(Boolean)));
+    return ["All", ...unique];
+  }, [publishedProjects]);
+
+  const [filter, setFilter] = useState<string>("All");
+
+  const list = publishedProjects.filter((p) => filter === "All" || p.category === filter);
 
   return (
     <Section
@@ -96,7 +127,7 @@ export function Projects() {
     >
       <Reveal className="mb-10">
         <div className="inline-flex flex-wrap gap-2 rounded-full glass p-1.5">
-          {FILTERS.map((f) => (
+          {filterCategories.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -123,7 +154,7 @@ export function Projects() {
         <AnimatePresence mode="popLayout">
           {list.map((p) => (
             <motion.article
-              key={p.title}
+              key={p.id || p.title}
               layout
               initial={{ opacity: 0, scale: 0.94, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -167,23 +198,27 @@ export function Projects() {
                   ))}
                 </ul>
                 <div className="mt-7 flex items-center gap-3">
-                  <a
-                    href={p.demo}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
-                    style={{ background: "var(--gradient-aurora)" }}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" /> Live Demo
-                  </a>
-                  <a
-                    href={p.repo}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-xs font-semibold transition-colors hover:border-primary"
-                  >
-                    <Github className="h-3.5 w-3.5" /> GitHub
-                  </a>
+                  {p.demo && (
+                    <a
+                      href={p.demo}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+                      style={{ background: "var(--gradient-aurora)" }}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> Live Demo
+                    </a>
+                  )}
+                  {p.repo && (
+                    <a
+                      href={p.repo}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-xs font-semibold transition-colors hover:border-primary"
+                    >
+                      <Github className="h-3.5 w-3.5" /> GitHub
+                    </a>
+                  )}
                 </div>
               </div>
             </motion.article>

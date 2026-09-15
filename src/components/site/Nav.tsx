@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "@tanstack/react-router";
+import { Menu, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence, motion, useScroll, useSpring } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
 export const NAV_ITEMS = [
   { id: "home", label: "Home" },
@@ -17,10 +19,20 @@ export const NAV_ITEMS = [
 ];
 
 export function Nav() {
+  const { settings, profile } = useAdminData();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("home");
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.2 });
+
+  const logoData = useMemo(() => {
+    const raw = settings?.general?.logoText || profile?.fullName || "MEGA.dev";
+    if (raw.includes(".")) {
+      const parts = raw.split(".");
+      return { prefix: parts[0], suffix: `.${parts.slice(1).join(".")}` };
+    }
+    return { prefix: raw, suffix: "" };
+  }, [settings?.general?.logoText, profile?.fullName]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -58,8 +70,8 @@ export function Nav() {
             onClick={() => go("home")}
             className="font-display text-base font-extrabold tracking-tight"
           >
-            <span className="aurora-text">MEGA</span>
-            <span className="text-muted-foreground">.dev</span>
+            <span className="aurora-text">{logoData.prefix}</span>
+            {logoData.suffix && <span className="text-muted-foreground">{logoData.suffix}</span>}
           </button>
 
           <ul className="hidden items-center gap-1 lg:flex">
@@ -91,13 +103,24 @@ export function Nav() {
             ))}
           </ul>
 
-          <button
-            aria-label={open ? "Close menu" : "Open menu"}
-            onClick={() => setOpen((v) => !v)}
-            className="grid h-10 w-10 place-items-center rounded-full glass lg:hidden"
-          >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/admin"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-foreground shadow-sm"
+              title="Admin Panel"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-110" />
+              <span>Admin</span>
+            </Link>
+
+            <button
+              aria-label={open ? "Close menu" : "Open menu"}
+              onClick={() => setOpen((v) => !v)}
+              className="grid h-10 w-10 place-items-center rounded-full glass lg:hidden"
+            >
+              {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          </div>
         </nav>
 
         <AnimatePresence>
@@ -125,6 +148,16 @@ export function Nav() {
                     </button>
                   </li>
                 ))}
+                <li className="col-span-2 mt-2 pt-2 border-t border-white/10">
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>Admin Panel</span>
+                  </Link>
+                </li>
               </ul>
             </motion.div>
           )}

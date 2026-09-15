@@ -1,35 +1,80 @@
 import { Award, Code2, GitBranch, Trophy } from "lucide-react";
 import { Counter, Reveal, Section, TiltCard } from "./primitives";
-
-const STATS = [
-  { icon: Code2, label: "Projects Completed", value: 1, suffix: "+" },
-  { icon: Award, label: "Certificates", value: 15, suffix: "+" },
-  { icon: Trophy, label: "Hackathons", value: 6, suffix: "" },
-  { icon: GitBranch, label: "GitHub Contributions", value: 1240, suffix: "+" },
-];
-
-const EDUCATION = [
-  {
-    year: "2024 — 2028",
-    title: "B.Tech — Information Technology",
-    place: "JKKN College of Engineering Technology,Anna University, Tamil Nadu",
-    detail: "CGPA 8.7 / 10 · Specialisation in full stack systems and applied machine learning.",
-  },
-  {
-    year: "2021 — 2023",
-    title: "Higher Secondary —Bio-Maths",
-    place: "KALAIMAGAL VIDHYASHRAM MATRICULATION HIGHER SECONDARY SCHOOL.",
-    detail: "65% ·",
-  },
-  {
-    year: "2020 — 2021",
-    title: "SSLC",
-    place: "St. Mary's Matriculation School ",
-    detail: "55%",
-  },
-];
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
 export function About() {
+  const { profile, education } = useAdminData();
+
+  const stats = [
+    {
+      icon: Code2,
+      label: "Projects Completed",
+      value: profile?.metrics?.projectsCompleted ?? 1,
+      suffix: "+",
+    },
+    {
+      icon: Award,
+      label: "Certificates",
+      value: profile?.metrics?.certificatesCount ?? 15,
+      suffix: "+",
+    },
+    {
+      icon: Trophy,
+      label: "Hackathons",
+      value: profile?.metrics?.hackathonsCount ?? 6,
+      suffix: "",
+    },
+    {
+      icon: GitBranch,
+      label: "GitHub Contributions",
+      value: profile?.metrics?.githubContributions ?? 1240,
+      suffix: "+",
+    },
+  ];
+
+  const aboutParagraphs = profile?.aboutMe
+    ? profile.aboutMe.split("\n\n").filter(Boolean)
+    : [
+        `I'm ${profile?.fullName || "Meganathan.R"}, a full stack developer focused on the MERN ecosystem. I care about the small details — the easing curve of a transition, a query that drops from 900ms to 40ms, an interface that explains itself without a tooltip.`,
+        "Recently I've been pairing traditional web engineering with AI: retrieval pipelines, LLM-powered assistants, and tools that quietly remove busywork from people's days.",
+      ];
+
+  const educationList =
+    education && education.length > 0
+      ? education
+          .slice()
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+          .map((e) => ({
+            id: e.id,
+            year: `${e.startDate || ""}${e.endDate ? ` — ${e.endDate}` : ""}`,
+            title: `${e.degree || ""}${e.field ? ` — ${e.field}` : ""}`,
+            place: `${e.institution || ""}${e.location ? `, ${e.location}` : ""}`,
+            detail: `${e.grade ? `${e.grade} · ` : ""}${e.description || ""}`,
+          }))
+      : [
+          {
+            id: "edu-1",
+            year: "2024 — 2028",
+            title: "B.Tech — Information Technology",
+            place: "JKKN College of Engineering Technology,Anna University, Tamil Nadu",
+            detail: "CGPA 8.7 / 10 · Specialisation in full stack systems and applied machine learning.",
+          },
+          {
+            id: "edu-2",
+            year: "2021 — 2023",
+            title: "Higher Secondary — Bio-Maths",
+            place: "KALAIMAGAL VIDHYASHRAM MATRICULATION HIGHER SECONDARY SCHOOL.",
+            detail: "65% ·",
+          },
+          {
+            id: "edu-3",
+            year: "2020 — 2021",
+            title: "SSLC",
+            place: "St. Mary's Matriculation School",
+            detail: "55%",
+          },
+        ];
+
   return (
     <>
       <Section
@@ -46,23 +91,20 @@ export function About() {
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <Reveal>
             <div className="glow-card rounded-3xl p-8 md:p-10">
-              <p className="text-lg leading-relaxed text-muted-foreground">
-                I&apos;m{" "}
-                <span className="font-semibold text-foreground">Meganathan.R</span>, a full stack
-                developer focused on the MERN ecosystem. I care about the small details — the
-                easing curve of a transition, a query that drops from 900ms to 40ms, an interface
-                that explains itself without a tooltip.
-              </p>
-              <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-                Recently I&apos;ve been pairing traditional web engineering with AI: retrieval
-                pipelines, LLM-powered assistants, and tools that quietly remove busywork from
-                people&apos;s days.
-              </p>
+              {aboutParagraphs.map((p, i) => (
+                <p
+                  key={i}
+                  className={`text-lg leading-relaxed text-muted-foreground ${i > 0 ? "mt-6" : ""}`}
+                >
+                  {p}
+                </p>
+              ))}
+
               <dl className="mt-10 grid gap-6 sm:grid-cols-3">
                 {[
-                  ["Focus", "Full Stack · AI  Network security"],
-                  ["Experience", "AI Tools Expert · MERN Developer"],
-                  ["Based in", "Tamil Nadu, India"],
+                  ["Focus", profile?.professionalTitle || "Full Stack · AI · MERN Developer"],
+                  ["Experience", `${profile?.metrics?.projectsCompleted ?? 24}+ Completed Projects`],
+                  ["Based in", profile?.location || "Tamil Nadu, India"],
                 ].map(([k, v]) => (
                   <div key={k}>
                     <dt className="font-mono text-[0.65rem] uppercase tracking-[0.3em] text-primary">
@@ -76,7 +118,7 @@ export function About() {
           </Reveal>
 
           <div className="grid grid-cols-2 gap-5">
-            {STATS.map((s, i) => (
+            {stats.map((s, i) => (
               <Reveal key={s.label} delay={i * 0.08}>
                 <TiltCard className="h-full p-6">
                   <s.icon className="h-5 w-5 text-primary" />
@@ -108,12 +150,11 @@ export function About() {
             style={{ background: "var(--gradient-aurora)", opacity: 0.55 }}
           />
           <div className="space-y-10 md:space-y-16">
-            {EDUCATION.map((e, i) => (
-              <Reveal key={e.title} delay={i * 0.1}>
+            {educationList.map((e, i) => (
+              <Reveal key={e.id || e.title} delay={i * 0.1}>
                 <div
                   className={`relative md:flex md:items-center md:gap-10 ${
-                    i % 2 ? "md:flex-row-reverse" : 
-                    ""
+                    i % 2 ? "md:flex-row-reverse" : ""
                   }`}
                 >
                   <span

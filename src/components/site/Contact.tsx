@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowUp,
   Download,
@@ -10,10 +11,12 @@ import {
   MapPin,
   Phone,
   Send,
+  Twitter,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MagneticButton, Reveal, Section, TiltCard } from "./primitives";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80),
@@ -21,15 +24,8 @@ const schema = z.object({
   message: z.string().trim().min(10, "Tell me a little more").max(1200),
 });
 
-const EMAIL = "meganathanarun101@gmail.com";
-const SOCIALS = [
-  {icon: Mail, label: "Mail", href: "meganathanarun101@gmail.com"},
-  { icon: Github, label: "GitHub", href: "https://github.com/meganathanarun101-eng/synth-port-showcase.git" },
-  { icon: Linkedin, label: "LinkedIn", href: "https://www.linkedin.com/in/meganathan-r-811771320?utm_source=share_via&utm_content=profile&utm_medium=member_android" },
-  { icon: Instagram, label: "Instagram", href: "https://www.instagram.com/megu_arun_350_m_s?igsh=MWpiZ3N0enJlam94eQ="},
-];
-
 export function Contact() {
+  const { profile, settings, resume, saveMessage } = useAdminData();
   const [visits, setVisits] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -40,26 +36,90 @@ export function Contact() {
     setVisits(base + stored);
   }, []);
 
+  const email = profile?.email || "meganathanarun101@gmail.com";
+  const phone = profile?.phone || "+91 8838574730";
+  const location = profile?.location || "salem, Tamil Nadu, India";
+
+  const socials = useMemo(() => {
+    const links = [];
+    if (email) {
+      links.push({ icon: Mail, label: "Mail", href: `mailto:${email}` });
+    }
+    if (profile?.socialLinks?.github) {
+      links.push({ icon: Github, label: "GitHub", href: profile.socialLinks.github });
+    }
+    if (profile?.socialLinks?.linkedin) {
+      links.push({ icon: Linkedin, label: "LinkedIn", href: profile.socialLinks.linkedin });
+    }
+    if (profile?.socialLinks?.instagram) {
+      links.push({ icon: Instagram, label: "Instagram", href: profile.socialLinks.instagram });
+    }
+    if (profile?.socialLinks?.twitter) {
+      links.push({ icon: Twitter, label: "Twitter", href: profile.socialLinks.twitter });
+    }
+    return links.length > 0
+      ? links
+      : [
+          { icon: Mail, label: "Mail", href: `mailto:${email}` },
+          { icon: Github, label: "GitHub", href: "https://github.com/meganathanarun101-eng/synth-port-showcase.git" },
+          { icon: Linkedin, label: "LinkedIn", href: "https://www.linkedin.com/in/meganathan-r-811771320" },
+          { icon: Instagram, label: "Instagram", href: "https://www.instagram.com/megu_arun_350_m_s" },
+        ];
+  }, [profile?.socialLinks, email]);
+
+  const activeResumeUrl = useMemo(() => {
+    const active = resume?.find((r) => r.isActive)?.downloadUrl;
+    return active || profile?.resumeUrl || "/resume.pdf";
+  }, [resume, profile?.resumeUrl]);
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.currentTarget));
+    const formElement = e.currentTarget;
+    const data = Object.fromEntries(new FormData(formElement));
     const parsed = schema.safeParse(data);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Please check the form");
       return;
     }
     setSending(true);
-    const { name, email, message } = parsed.data;
-    const url = `mailto:${EMAIL}?subject=${encodeURIComponent(
+    const { name, email: senderEmail, message } = parsed.data;
+
+    // Save directly into the admin messages database
+    try {
+      saveMessage({
+        id: `msg-${Date.now()}`,
+        name,
+        email: senderEmail,
+        subject: `Portfolio enquiry from ${name}`,
+        message,
+        status: "unread",
+        starred: false,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Failed to save message to admin inbox", err);
+    }
+
+    // Try mailto fallback
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(
       `Portfolio enquiry from ${name}`,
-    )}&body=${encodeURIComponent(`${message}\n\n— ${name} (${email})`)}`;
-    window.location.href = url;
+    )}&body=${encodeURIComponent(`${message}\n\n— ${name} (${senderEmail})`)}`;
+
     setTimeout(() => {
       setSending(false);
-      toast.success("Opening your email app — thanks for reaching out!");
-      e.currentTarget?.reset?.();
-    }, 600);
+      toast.success("Message received and saved to admin inbox! Thank you for reaching out.");
+      formElement.reset();
+      // Optional: prompt if user wants to send via email client as well
+      const wantsMailClient = window.confirm(
+        "Message received! Would you also like to open your email client to send a direct copy?",
+      );
+      if (wantsMailClient) {
+        window.location.href = mailtoUrl;
+      }
+    }, 400);
   };
+
+  const brandName = settings?.general?.logoText || profile?.fullName || "Meganathan.R";
 
   return (
     <>
@@ -77,14 +137,14 @@ export function Contact() {
             <div className="max-w-xl">
               <FileText className="h-7 w-7 text-primary" />
               <h3 className="mt-6 font-display text-2xl font-extrabold md:text-3xl">
-                Full stack developer, MERN &amp; AI
+                {profile?.professionalTitle || "Full stack developer, MERN & AI"}
               </h3>
               <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                 Education, experience, projects and the full technology list — condensed into a
                 single PDF page.
               </p>
             </div>
-            <MagneticButton href="/resume.pdf" download>
+            <MagneticButton href={activeResumeUrl} download>
               <Download className="h-4 w-4" /> Download Resume
             </MagneticButton>
           </div>
@@ -104,9 +164,9 @@ export function Contact() {
         <div className="grid gap-7 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="space-y-5">
             {[
-              { icon: Mail, label: "Email", value: EMAIL, href: `mailto:${EMAIL}` },
-              { icon: Phone, label: "Phone", value: "+91 8838574730", href: "tel:+918838574730" },
-              { icon: MapPin, label: "Location", value: "salem, Tamil Nadu, India" },
+              { icon: Mail, label: "Email", value: email, href: `mailto:${email}` },
+              { icon: Phone, label: "Phone", value: phone, href: `tel:${phone}` },
+              { icon: MapPin, label: "Location", value: location },
             ].map((c) => (
               <Reveal key={c.label}>
                 <TiltCard className="flex items-center gap-5 p-6">
@@ -137,7 +197,7 @@ export function Contact() {
 
             <Reveal>
               <div className="flex gap-3">
-                {SOCIALS.map((s) => (
+                {socials.map((s) => (
                   <a
                     key={s.label}
                     href={s.href}
@@ -162,6 +222,7 @@ export function Contact() {
                   </span>
                   <input
                     name="name"
+                    required
                     maxLength={80}
                     className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
                     placeholder="Your name"
@@ -174,6 +235,7 @@ export function Contact() {
                   <input
                     name="email"
                     type="email"
+                    required
                     maxLength={160}
                     className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
                     placeholder="you@example.com"
@@ -186,6 +248,7 @@ export function Contact() {
                 </span>
                 <textarea
                   name="message"
+                  required
                   rows={6}
                   maxLength={1200}
                   className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
@@ -202,12 +265,20 @@ export function Contact() {
         </div>
       </Section>
 
-      <Footer visits={visits} />
+      <Footer visits={visits} brandName={brandName} socials={socials} />
     </>
   );
 }
 
-function Footer({ visits }: { visits: number | null }) {
+function Footer({
+  visits,
+  brandName,
+  socials,
+}: {
+  visits: number | null;
+  brandName: string;
+  socials: Array<{ icon: any; label: string; href: string }>;
+}) {
   return (
     <footer className="relative mt-16 overflow-hidden">
       <div aria-hidden className="relative h-24 w-full overflow-hidden">
@@ -226,10 +297,10 @@ function Footer({ visits }: { visits: number | null }) {
 
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-6 pb-14 text-center">
         <p className="font-display text-2xl font-extrabold tracking-tight">
-          <span className="aurora-text">Meganathan.R</span>
+          <span className="aurora-text">{brandName}</span>
         </p>
         <div className="flex gap-3">
-          {SOCIALS.map((s) => (
+          {socials.map((s) => (
             <a
               key={s.label}
               href={s.href}
@@ -242,8 +313,12 @@ function Footer({ visits }: { visits: number | null }) {
             </a>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Meganathan.R · Built with React, Tailwind &amp; Motion
+        <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
+          <span>© {new Date().getFullYear()} {brandName} · Built with React, Tailwind &amp; Motion</span>
+          <span>·</span>
+          <Link to="/admin" className="text-muted-foreground/80 hover:text-primary transition-colors underline-offset-4 hover:underline">
+            Admin Portal
+          </Link>
         </p>
         {visits !== null && (
           <p className="font-mono text-[0.65rem] uppercase tracking-[0.3em] text-muted-foreground/70">

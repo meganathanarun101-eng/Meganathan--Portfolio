@@ -1,8 +1,9 @@
 import { useRef } from "react";
 import { useInView } from "motion/react";
 import { Reveal, Section } from "./primitives";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
-const SKILLS = [
+const DEFAULT_SKILLS = [
   { name: "HTML", value: 95 },
   { name: "CSS", value: 92 },
   { name: "JavaScript", value: 90 },
@@ -27,7 +28,7 @@ function Ring({ name, value, delay }: { name: string; value: number; delay: numb
       <div className="relative h-28 w-28">
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
           <defs>
-            <linearGradient id={`g-${name}`} x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id={`g-${name.replace(/\s+/g, "-")}`} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="var(--cyan)" />
               <stop offset="100%" stopColor="var(--violet)" />
             </linearGradient>
@@ -38,7 +39,7 @@ function Ring({ name, value, delay }: { name: string; value: number; delay: numb
             cy="50"
             r={r}
             fill="none"
-            stroke={`url(#g-${name})`}
+            stroke={`url(#g-${name.replace(/\s+/g, "-")})`}
             strokeWidth="7"
             strokeLinecap="round"
             strokeDasharray={c}
@@ -61,6 +62,20 @@ function Ring({ name, value, delay }: { name: string; value: number; delay: numb
 }
 
 export function Skills() {
+  const { skills } = useAdminData();
+
+  const skillList =
+    skills && skills.length > 0
+      ? skills
+          .slice()
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            value: s.level,
+          }))
+      : DEFAULT_SKILLS.map((s, idx) => ({ id: `dsk-${idx}`, ...s }));
+
   return (
     <Section
       id="skills"
@@ -75,8 +90,8 @@ export function Skills() {
       <Reveal>
         <div className="glow-card rounded-[2rem] p-8 md:p-12">
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
-            {SKILLS.map((s, i) => (
-              <Ring key={s.name} name={s.name} value={s.value} delay={i * 0.08} />
+            {skillList.map((s, i) => (
+              <Ring key={s.id || s.name} name={s.name} value={s.value} delay={i * 0.05} />
             ))}
           </div>
         </div>

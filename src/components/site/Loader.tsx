@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
 export function Loader() {
+  const { profile } = useAdminData();
   const [done, setDone] = useState(false);
   const [pct, setPct] = useState(0);
 
@@ -40,7 +42,7 @@ export function Loader() {
             </div>
           </div>
           <p className="font-display text-2xl font-bold tracking-tight">
-            <span className="aurora-text">Meganathan.R(Arun)</span>
+            <span className="aurora-text">{profile?.fullName || "Meganathan.R"}</span>
           </p>
           <p className="mt-2 font-mono text-xs uppercase tracking-[0.4em] text-muted-foreground">
             loading experience

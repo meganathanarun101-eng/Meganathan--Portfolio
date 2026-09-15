@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { ArrowDown, Download, Mail, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
-import profile from "@/assets/profile.jpg";
+import defaultProfileImg from "@/assets/profile.jpg";
 import { MagneticButton } from "./primitives";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
-const ROLES = ["Full Stack Developer", "MERN Stack Developer", "AI Enthusiast"];
-
-function useTyping() {
+function useTyping(roles: string[]) {
   const [text, setText] = useState("");
   const [i, setI] = useState(0);
   const [del, setDel] = useState(false);
 
   useEffect(() => {
-    const full = ROLES[i % ROLES.length]!;
+    if (!roles || roles.length === 0) return;
+    const full = roles[i % roles.length]!;
     const speed = del ? 45 : 85;
     const t = setTimeout(() => {
       const next = del ? full.slice(0, text.length - 1) : full.slice(0, text.length + 1);
@@ -24,13 +24,22 @@ function useTyping() {
       }
     }, speed);
     return () => clearTimeout(t);
-  }, [text, del, i]);
+  }, [text, del, i, roles]);
 
   return text;
 }
 
 export function Hero() {
-  const typed = useTyping();
+  const { profile } = useAdminData();
+  const roles = useMemo(() => {
+    const list = (profile?.professionalTitle || "")
+      .split(/[·|,/]/)
+      .map((r) => r.trim())
+      .filter(Boolean);
+    return list.length > 0 ? list : ["Full Stack Developer", "MERN Stack Developer", "AI Enthusiast"];
+  }, [profile?.professionalTitle]);
+
+  const typed = useTyping(roles);
   const imgRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState("");
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
@@ -45,6 +54,13 @@ export function Hero() {
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
+
+  const availabilityLabel =
+    profile?.availabilityStatus === "busy"
+      ? "Busy with projects"
+      : profile?.availabilityStatus === "open_to_offers"
+        ? "Open to offers"
+        : "Available for work";
 
   return (
     <section
@@ -98,12 +114,8 @@ export function Hero() {
             <span
               className="mt-2 block aurora-text"
               style={{ textShadow: "0 0 80px color-mix(in oklab, var(--violet) 40%, transparent)" }}
-            >𝐌𝐄𝐆𝐀𝐍𝐀𝐓𝐇𝐀𝐍.𝐑
-
-
-
-
-
+            >
+              {profile?.fullName || "MEGANATHAN.R"}
             </span>
           </motion.h1>
 
@@ -126,8 +138,8 @@ export function Hero() {
             transition={{ duration: 0.9, delay: 0.5 }}
             className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg"
           >
-            I design and engineer fast, elegant web products — from pixel-perfect interfaces to
-            resilient APIs and AI-powered experiences.
+            {profile?.shortBio ||
+              "I design and engineer fast, elegant web products — from pixel-perfect interfaces to resilient APIs and AI-powered experiences."}
           </motion.p>
 
           <motion.div
@@ -139,7 +151,7 @@ export function Hero() {
             <MagneticButton href="#projects">
               View Projects <ArrowDown className="h-4 w-4" />
             </MagneticButton>
-            <MagneticButton href="#resume" variant="outline">
+            <MagneticButton href={profile?.resumeUrl || "#resume"} variant="outline">
               <Download className="h-4 w-4" /> Download Resume
             </MagneticButton>
             <MagneticButton href="#contact" variant="outline">
@@ -177,8 +189,8 @@ export function Hero() {
             onMouseLeave={() => setTilt("")}
           >
             <img
-              src={profile}
-              alt="Portrait of Meganathan.R, full stack developer"
+              src={profile?.avatarUrl || defaultProfileImg}
+              alt={`Portrait of ${profile?.fullName || "Meganathan.R"}, full stack developer`}
               width={768}
               height={960}
               className="h-full w-full object-cover"
@@ -193,9 +205,11 @@ export function Hero() {
             />
             <div className="absolute bottom-5 left-5 right-5 rounded-2xl glass px-4 py-3">
               <p className="font-mono text-[0.65rem] uppercase tracking-[0.3em] text-primary">
-                Available for work
+                {availabilityLabel}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground"> salem,Tamil Nadu, India · Remote</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {profile?.location || "salem, Tamil Nadu, India · Remote"}
+              </p>
             </div>
           </div>
         </motion.div>

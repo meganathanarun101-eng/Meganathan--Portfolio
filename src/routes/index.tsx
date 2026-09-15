@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Background } from "@/components/site/Background";
@@ -11,6 +12,7 @@ import { Work } from "@/components/site/Work";
 import { Projects } from "@/components/site/Projects";
 import { Credentials } from "@/components/site/Credentials";
 import { Contact } from "@/components/site/Contact";
+import { useAdminData } from "@/features/admin/context/AdminDataContext";
 
 const TITLE = "Meganathan R — Full Stack & MERN Developer";
 const DESC =
@@ -31,6 +33,18 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const { settings, profile } = useAdminData();
+
+  useEffect(() => {
+    const title =
+      settings?.seo?.metaTitle ||
+      settings?.general?.websiteTitle ||
+      `${profile?.fullName || "Meganathan R"} — ${profile?.professionalTitle || "Full Stack Developer"}`;
+    if (title && typeof document !== "undefined") {
+      document.title = title;
+    }
+  }, [settings, profile]);
+
   return (
     <>
       <Loader />
