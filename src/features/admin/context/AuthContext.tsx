@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { AdminUser, AuthSession, LoginCredentials } from '../types/auth';
+import { AdminCredentials, AdminUser, AuthSession, LoginCredentials } from '../types/auth';
 import { authService } from '../services/authService';
 
 interface AuthContextType {
@@ -10,6 +10,14 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (updates: Partial<AdminUser>) => void;
+  getCredentials: () => AdminCredentials;
+  updateCredentials: (params: {
+    username?: string;
+    email?: string;
+    currentPassword: string;
+    newPassword?: string;
+  }) => { success: boolean; error?: string };
+  resetCredentials: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +60,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateCredentials = (params: {
+    username?: string;
+    email?: string;
+    currentPassword: string;
+    newPassword?: string;
+  }) => {
+    const res = authService.updateCredentials(params);
+    if (res.success && session) {
+      const refreshedUser = authService.getCurrentUser();
+      if (refreshedUser) {
+        setSession({ ...session, user: refreshedUser });
+      }
+    }
+    return res;
+  };
+
+  const getCredentials = () => {
+    return authService.getCredentials();
+  };
+
+  const resetCredentials = () => {
+    authService.resetCredentialsToDefault();
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -62,6 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         updateProfile,
+        getCredentials,
+        updateCredentials,
+        resetCredentials,
       }}
     >
       {children}
@@ -76,3 +111,4 @@ export function useAuth() {
   }
   return context;
 }
+

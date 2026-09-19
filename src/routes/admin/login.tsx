@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
-  Check,
   Eye,
   EyeOff,
-  KeyRound,
   Loader2,
   Lock,
-  Mail,
   Shield,
-  Sparkles,
+  User,
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/features/admin/context/AuthContext';
+import { authService } from '@/features/admin/services/authService';
 
 export const Route = createFileRoute('/admin/login')({
   head: () => ({
@@ -38,7 +36,7 @@ export const Route = createFileRoute('/admin/login')({
 });
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  identifier: z.string().min(3, 'Please enter your username or email'),
   password: z.string().min(4, 'Password must be at least 4 characters'),
   rememberMe: z.boolean().optional(),
 });
@@ -46,13 +44,15 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 function AdminLogin() {
-  const { login } = useAuth();
+  const { login, getCredentials } = useAuth();
   const navigate = useNavigate();
-  const routerState = useRouterState();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+
+  const currentCreds = getCredentials();
+  const isCustom = authService.isCustomCredentialsSet();
 
   const {
     register,
@@ -62,8 +62,8 @@ function AdminLogin() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'admin@meganathan.dev',
-      password: 'admin123',
+      identifier: '',
+      password: '',
       rememberMe: true,
     },
   });
@@ -71,9 +71,9 @@ function AdminLogin() {
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     const result = await login({
-      email: data.email,
+      identifier: data.identifier,
       password: data.password,
-      rememberMe: data.rememberMe,
+      rememberMe: data.rememberMe ?? true,
     });
     setLoading(false);
 
@@ -84,15 +84,15 @@ function AdminLogin() {
       const redirectTarget = searchParams.get('redirect') || '/admin/dashboard';
       navigate({ to: redirectTarget as any });
     } else {
-      toast.error(result.error ?? 'Invalid email or password');
+      toast.error(result.error ?? 'Invalid username/email or password');
     }
   };
 
   const handleQuickFill = () => {
-    setValue('email', 'admin@meganathan.dev');
-    setValue('password', 'admin123');
+    setValue('identifier', currentCreds.username);
+    setValue('password', currentCreds.password);
     setValue('rememberMe', true);
-    toast.info('Filled demo credentials (admin@meganathan.dev / admin123)');
+    toast.info(`Filled credentials for ${currentCreds.username}`);
   };
 
   const handleResetPassword = (e: React.FormEvent) => {
@@ -149,23 +149,24 @@ function AdminLogin() {
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
-            {/* Email */}
+            {/* Username or Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-semibold">
-                Email Address
+              <Label htmlFor="identifier" className="text-xs font-semibold">
+                Username or Email Address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  placeholder="admin@meganathan.dev"
+                  id="identifier"
+                  type="text"
+                  autoComplete="username"
+                  {...register('identifier')}
+                  placeholder="meganathan or admin@meganathan.dev"
                   className="h-11 rounded-xl border-white/10 bg-white/[0.03] pl-10 text-xs focus:border-primary"
                 />
               </div>
-              {errors.email && (
-                <p className="text-xs text-rose-400">{errors.email.message}</p>
+              {errors.identifier && (
+                <p className="text-xs text-rose-400">{errors.identifier.message}</p>
               )}
             </div>
 
@@ -188,6 +189,7 @@ function AdminLogin() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   {...register('password')}
                   placeholder="••••••••••••"
                   className="h-11 rounded-xl border-white/10 bg-white/[0.03] pl-10 pr-10 text-xs focus:border-primary"
@@ -236,7 +238,7 @@ function AdminLogin() {
               )}
             </Button>
 
-            {/* Quick Demo Fill Helper Button */}
+            {/* Autofill Helper */}
             <div className="pt-2">
               <button
                 type="button"
@@ -244,14 +246,18 @@ function AdminLogin() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-2.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-white/[0.05] hover:text-foreground"
               >
                 <Zap className="h-3.5 w-3.5 text-amber-400" />
-                <span>Quick Autofill Demo Credentials</span>
+                <span>
+                  {isCustom
+                    ? 'Autofill Saved Credentials'
+                    : 'Autofill Default Credentials (meganathan / admin123)'}
+                </span>
               </button>
             </div>
           </form>
 
           <div className="mt-8 border-t border-white/10 pt-4 text-center">
             <p className="text-[0.65rem] text-muted-foreground">
-              Protected by Meganathan R Auth Guard · Frontend Mock Service
+              Protected Admin Console · Personalized Credential Management
             </p>
           </div>
         </div>

@@ -17,6 +17,7 @@ import {
   Shield,
   Sliders,
   Upload,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,9 +32,13 @@ import { cn } from '@/lib/utils';
 
 export function SettingsView() {
   const { settings, updateSettings, exportJSON, importJSON, resetToDefaults } = useAdminData();
-  const { logout } = useAuth();
+  const { logout, getCredentials, updateCredentials, resetCredentials } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'social' | 'seo' | 'security' | 'backup'>('general');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [credentials, setCredentials] = useState(() => getCredentials());
+  const [adminUsername, setAdminUsername] = useState(() => credentials.username);
+  const [adminEmail, setAdminEmail] = useState(() => credentials.email);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,19 +84,60 @@ export function SettingsView() {
     reader.readAsText(file);
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangeCredentials = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!currentPassword) {
+      toast.error('Please enter your current password to authorize changes.');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+    if (!adminUsername.trim()) {
+      toast.error('Username cannot be empty.');
       return;
     }
-    toast.success('Admin password updated successfully');
+    if (!adminEmail.trim()) {
+      toast.error('Email cannot be empty.');
+      return;
+    }
+    if (newPassword && newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+
+    const res = updateCredentials({
+      username: adminUsername,
+      email: adminEmail,
+      currentPassword,
+      newPassword: newPassword || undefined,
+    });
+
+    if (res.success) {
+      toast.success('Admin credentials updated successfully! Only your new credentials can access this panel.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      const updated = getCredentials();
+      setCredentials(updated);
+      setAdminUsername(updated.username);
+      setAdminEmail(updated.email);
+    } else {
+      toast.error(res.error || 'Failed to update credentials.');
+    }
+  };
+
+  const handleResetCredentials = () => {
+    resetCredentials();
+    const defaultCreds = getCredentials();
+    setCredentials(defaultCreds);
+    setAdminUsername(defaultCreds.username);
+    setAdminEmail(defaultCreds.email);
+    setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    toast.success('Credentials reset to defaults (meganathan / admin123).');
   };
 
   const activeSessions = authService.getActiveSessions();
@@ -379,37 +425,122 @@ export function SettingsView() {
           {activeTab === 'security' && (
             <div className="space-y-8 max-w-2xl">
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Admin Credentials</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Change your password or manage active console sessions.
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-foreground">Admin Credentials</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Set your personal username, email, and password so only you can access the admin panel.
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-[0.7rem] font-semibold tracking-wide border',
+                      authService.isCustomCredentialsSet()
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    )}
+                  >
+                    {authService.isCustomCredentialsSet() ? 'Personalized & Protected' : 'Default Demo Mode'}
+                  </span>
+                </div>
 
-                <form onSubmit={handleChangePassword} className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-                  <div className="space-y-2">
-                    <Label className="text-xs">New Password</Label>
+                {/* Active credentials preview card */}
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Active Username</p>
+                    <p className="font-semibold text-foreground font-mono mt-0.5">{credentials.username}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Active Admin Email</p>
+                    <p className="font-semibold text-foreground font-mono mt-0.5">{credentials.email}</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangeCredentials} className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-black/20 p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Admin Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type="text"
+                          value={adminUsername}
+                          onChange={(e) => setAdminUsername(e.target.value)}
+                          placeholder="e.g. meganathan"
+                          className="rounded-xl border-white/10 bg-white/[0.03] pl-9 text-xs"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Admin Email</Label>
+                      <Input
+                        type="email"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        placeholder="e.g. meganathanarun101@gmail.com"
+                        className="rounded-xl border-white/10 bg-white/[0.03] text-xs"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 border-t border-white/10 pt-3">
+                    <Label className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5" /> Current Password (Required to authorize changes)
+                    </Label>
                     <Input
                       type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="rounded-xl border-white/10 bg-white/[0.03]"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter your current password (default is admin123)"
+                      className="rounded-xl border-white/10 bg-white/[0.03] text-xs"
+                      required
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs">Confirm New Password</Label>
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="rounded-xl border-white/10 bg-white/[0.03]"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">New Password (leave empty to keep current)</Label>
+                      <Input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 6 characters"
+                        className="rounded-xl border-white/10 bg-white/[0.03] text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Confirm New Password</Label>
+                      <Input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="rounded-xl border-white/10 bg-white/[0.03] text-xs"
+                      />
+                    </div>
                   </div>
 
-                  <Button type="submit" size="sm" className="bg-primary text-primary-foreground">
-                    Update Password
-                  </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <Button type="submit" size="sm" className="bg-primary text-primary-foreground font-semibold">
+                      Save &amp; Update Credentials
+                    </Button>
+
+                    {authService.isCustomCredentialsSet() && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetCredentials}
+                        className="text-xs text-muted-foreground hover:text-rose-400"
+                      >
+                        Reset to Default Credentials
+                      </Button>
+                    )}
+                  </div>
                 </form>
               </div>
 
