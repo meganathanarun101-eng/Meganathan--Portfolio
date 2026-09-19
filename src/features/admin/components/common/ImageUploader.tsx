@@ -13,6 +13,64 @@ interface ImageUploaderProps {
   label?: string;
 }
 
+/**
+ * Client-side canvas image compression to keep image sizes small (40KB - 80KB instead of 5MB - 10MB).
+ * This prevents localStorage QuotaExceededError and enables fast mobile sync.
+ */
+export async function compressImageFile(file: File, maxDim = 1200, quality = 0.78): Promise<string> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve(dataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export function ImageUploader({
   value,
   onChange,
@@ -27,31 +85,37 @@ export function ImageUploader({
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const simulateUpload = (file: File, callback: (resultUrl: string) => void) => {
+  const simulateUpload = async (file: File, callback: (resultUrl: string) => void) => {
     setUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(20);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const resultUrl = e.target?.result as string;
+    try {
+      setUploadProgress(50);
+      const compressedUrl = await compressImageFile(file);
+      setUploadProgress(85);
 
-      const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 95) {
-            clearInterval(interval);
-            setTimeout(() => {
-              setUploading(false);
-              setUploadProgress(0);
-              callback(resultUrl);
-              toast.success(`Image "${file.name}" uploaded successfully`);
-            }, 300);
-            return 100;
-          }
-          return prev + 25;
-        });
+      if (!compressedUrl) {
+        toast.error(`Failed to process image "${file.name}"`);
+        setUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+
+      setTimeout(() => {
+        setUploadProgress(100);
+        setTimeout(() => {
+          setUploading(false);
+          setUploadProgress(0);
+          callback(compressedUrl);
+          toast.success(`Image "${file.name}" optimized & uploaded`);
+        }, 150);
       }, 100);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error(`Error uploading image "${file.name}"`);
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleFiles = (files: FileList | null) => {

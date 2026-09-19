@@ -82,15 +82,68 @@ interface AdminDataContextType extends PortfolioDataStore {
   // Profile & Settings
   updateProfile: (profile: ProfileData) => void;
   updateSettings: (settings: SiteSettings) => void;
+
+  // Real-time synchronization
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  lastSyncTime: string | null;
+  forcePushToServer: () => Promise<boolean>;
+  forcePullFromServer: () => Promise<boolean>;
+  generateMobileSyncUrl: () => string;
 }
 
 const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined);
 
 export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<PortfolioDataStore>(() => portfolioDataService.loadStore());
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   const refreshData = useCallback(() => {
     setStore(portfolioDataService.loadStore());
+  }, []);
+
+  const forcePushToServer = useCallback(async () => {
+    setSyncStatus('syncing');
+    try {
+      const res = await portfolioDataService.pushToServer();
+      if (res.success) {
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        toast.success('Live site and mobile updated successfully!');
+        return true;
+      } else {
+        setSyncStatus('error');
+        toast.error('Failed to push changes to server');
+        return false;
+      }
+    } catch {
+      setSyncStatus('error');
+      toast.error('Connection error while syncing to server');
+      return false;
+    }
+  }, []);
+
+  const forcePullFromServer = useCallback(async () => {
+    setSyncStatus('syncing');
+    try {
+      const res = await portfolioDataService.syncWithServer(false);
+      refreshData();
+      setSyncStatus('synced');
+      setLastSyncTime(new Date().toLocaleTimeString());
+      if (res.updated) {
+        toast.success('Latest data synced from server!');
+      } else {
+        toast.info('Already up to date with server.');
+      }
+      return true;
+    } catch {
+      setSyncStatus('error');
+      return false;
+    }
+  }, [refreshData]);
+
+  const generateMobileSyncUrl = useCallback(() => {
+    return portfolioDataService.generateMobileSyncUrl();
   }, []);
 
   useEffect(() => {
@@ -104,6 +157,76 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener('portfolio_store_updated', handleStorageChange);
       window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [refreshData]);
+
+  // Fast auto-sync with server and URL param detection
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 1. Check for URL sync param (?sync_data=...)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const syncData = params.get('sync_data');
+      if (syncData) {
+        const success = portfolioDataService.applySyncData(syncData);
+        if (success) {
+          refreshData();
+          toast.success('Portfolio updated from mobile sync link!');
+          const cleanUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      }
+    } catch (e) {
+      console.error('Error handling sync_data parameter:', e);
+    }
+
+    // 2. Initial background sync
+    let mounted = true;
+    const doSync = async () => {
+      try {
+        const res = await portfolioDataService.syncWithServer();
+        if (mounted) {
+          if (res.updated) {
+            refreshData();
+          }
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString());
+        }
+      } catch {
+        if (mounted) setSyncStatus('error');
+      }
+    };
+
+    doSync();
+
+    // 3. Fast sync when user tabs back into mobile browser or desktop
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        doSync();
+      }
+    };
+
+    window.addEventListener('visibilitychange', onVisibilityOrFocus);
+    window.addEventListener('focus', onVisibilityOrFocus);
+
+    // 4. Lightweight polling (every 8 seconds when tab is active) to keep mobile & live site in sync
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        portfolioDataService.syncWithServer().then((res) => {
+          if (res.updated && mounted) {
+            refreshData();
+            setLastSyncTime(new Date().toLocaleTimeString());
+          }
+        }).catch(() => {});
+      }
+    }, 8000);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+      clearInterval(interval);
     };
   }, [refreshData]);
 
@@ -389,6 +512,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         markAllNotificationsRead,
         updateProfile,
         updateSettings,
+        syncStatus,
+        lastSyncTime,
+        forcePushToServer,
+        forcePullFromServer,
+        generateMobileSyncUrl,
       }}
     >
       {children}

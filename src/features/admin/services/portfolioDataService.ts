@@ -19,8 +19,10 @@ import {
   TestimonialItem,
   ProfileData,
   SiteSettings,
+  CloudSyncConfig,
 } from '../types/portfolio';
 import { ContactMessage, AdminNotification } from '../types/messages';
+import { getPortfolioServerDataFn, savePortfolioServerDataFn } from './serverPortfolioService';
 
 const STORAGE_KEY_PORTFOLIO = 'meganathan_admin_portfolio_data_v1';
 
@@ -39,9 +41,13 @@ export interface PortfolioDataStore {
   messages: ContactMessage[];
   notifications: AdminNotification[];
   settings: SiteSettings;
+  lastUpdated?: string;
+  version?: number;
 }
 
 export const INITIAL_PORTFOLIO_DATA: PortfolioDataStore = {
+  lastUpdated: '2025-01-01T00:00:00.000Z',
+  version: 1,
   profile: {
     fullName: 'Meganathan R',
     professionalTitle: 'Full Stack & MERN Developer · AI Enthusiast',
@@ -740,6 +746,10 @@ export const INITIAL_PORTFOLIO_DATA: PortfolioDataStore = {
       keywords: 'Meganathan, MERN Stack, React Developer, Full Stack, AI Developer, Web Portfolio, Tamil Nadu',
       ogImage: '/assets/profile.jpg',
     },
+    cloudSync: {
+      provider: 'none',
+      autoSync: true,
+    },
   },
 };
 
@@ -769,13 +779,235 @@ export const portfolioDataService = {
     }
   },
 
-  saveStore(data: PortfolioDataStore): void {
+  saveStore(data: PortfolioDataStore, skipServerSync = false): void {
     if (typeof window === 'undefined') return;
     try {
+      data.lastUpdated = new Date().toISOString();
+      data.version = (data.version || 1) + 1;
       localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(data));
       window.dispatchEvent(new Event('portfolio_store_updated'));
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error saving portfolio store', e);
+      if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+        console.warn('Storage limit reached! Please optimize uploaded images.');
+      }
+    }
+
+    if (!skipServerSync) {
+      this.pushToServer(data).catch((err) => {
+        console.warn('Auto background server sync skipped/failed:', err);
+      });
+    }
+  },
+
+  async pushToCloudDirect(data: PortfolioDataStore): Promise<boolean> {
+    const cfg = data.settings?.cloudSync;
+    if (!cfg || cfg.provider === 'none') return false;
+
+    try {
+      if (cfg.provider === 'vercel-kv' && cfg.vercelKvUrl && cfg.vercelKvToken) {
+        const endpoint = `${cfg.vercelKvUrl.replace(/\/$/, '')}/set/meganathan_portfolio_store`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.vercelKvToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        return res.ok;
+      }
+
+      if (cfg.provider === 'jsonbin' && cfg.jsonbinBinId && cfg.jsonbinApiKey) {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.jsonbinBinId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': cfg.jsonbinApiKey,
+          },
+          body: JSON.stringify(data),
+        });
+        return res.ok;
+      }
+
+      if (cfg.provider === 'supabase' && cfg.supabaseUrl && cfg.supabaseAnonKey) {
+        const res = await fetch(`${cfg.supabaseUrl.replace(/\/$/, '')}/rest/v1/portfolio_store`, {
+          method: 'POST',
+          headers: {
+            apikey: cfg.supabaseAnonKey,
+            Authorization: `Bearer ${cfg.supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify({
+            id: 'default',
+            data,
+            lastUpdated: data.lastUpdated || new Date().toISOString(),
+          }),
+        });
+        return res.ok;
+      }
+    } catch (e) {
+      console.warn('Direct cloud push warning:', e);
+    }
+    return false;
+  },
+
+  async pullFromCloudDirect(cfg?: CloudSyncConfig): Promise<PortfolioDataStore | null> {
+    const config = cfg || this.loadStore().settings?.cloudSync;
+    if (!config || config.provider === 'none') return null;
+
+    try {
+      if (config.provider === 'vercel-kv' && config.vercelKvUrl && config.vercelKvToken) {
+        const endpoint = `${config.vercelKvUrl.replace(/\/$/, '')}/get/meganathan_portfolio_store`;
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${config.vercelKvToken}` },
+          cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        if (!json.result) return null;
+        return typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
+      }
+
+      if (config.provider === 'jsonbin' && config.jsonbinBinId && config.jsonbinApiKey) {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${config.jsonbinBinId}/latest`, {
+          headers: { 'X-Master-Key': config.jsonbinApiKey },
+          cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return json.record as PortfolioDataStore;
+      }
+
+      if (config.provider === 'supabase' && config.supabaseUrl && config.supabaseAnonKey) {
+        const endpoint = `${config.supabaseUrl.replace(/\/$/, '')}/rest/v1/portfolio_store?id=eq.default&select=data,lastUpdated`;
+        const res = await fetch(endpoint, {
+          headers: {
+            apikey: config.supabaseAnonKey,
+            Authorization: `Bearer ${config.supabaseAnonKey}`,
+          },
+          cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          return list[0].data as PortfolioDataStore;
+        }
+      }
+    } catch (e) {
+      console.warn('Direct cloud pull warning:', e);
+    }
+    return null;
+  },
+
+  async pushToServer(data?: PortfolioDataStore): Promise<{ success: boolean; lastUpdated?: string }> {
+    try {
+      const storeToSave = data || this.loadStore();
+      const timestamp = storeToSave.lastUpdated || new Date().toISOString();
+      storeToSave.lastUpdated = timestamp;
+
+      // Also trigger direct cloud push if configured
+      this.pushToCloudDirect(storeToSave).catch(() => {});
+
+      const res = await savePortfolioServerDataFn({
+        data: {
+          store: storeToSave,
+          lastUpdated: timestamp,
+        },
+      });
+      return { success: true, lastUpdated: res.lastUpdated };
+    } catch (err) {
+      console.warn('Failed to push portfolio to server, attempting direct cloud fallback:', err);
+      const storeToSave = data || this.loadStore();
+      const directSuccess = await this.pushToCloudDirect(storeToSave);
+      return { success: directSuccess, lastUpdated: storeToSave.lastUpdated };
+    }
+  },
+
+  async syncWithServer(forcePush = false): Promise<{ updated: boolean; source: 'server' | 'local' | 'none' }> {
+    if (typeof window === 'undefined') return { updated: false, source: 'none' };
+
+    try {
+      const serverRes = await getPortfolioServerDataFn();
+      const localStore = this.loadStore();
+
+      let serverStore = serverRes && serverRes.success ? serverRes.store : null;
+      let serverTime = serverRes && serverRes.lastUpdated ? new Date(serverRes.lastUpdated).getTime() : 0;
+      const localTime = localStore.lastUpdated ? new Date(localStore.lastUpdated).getTime() : 0;
+
+      // If server returned no cloud data, try direct client cloud pull
+      if (!serverStore) {
+        const directData = await this.pullFromCloudDirect();
+        if (directData && directData.lastUpdated) {
+          serverStore = directData;
+          serverTime = new Date(directData.lastUpdated).getTime();
+        }
+      }
+
+      if (forcePush || (localTime > serverTime && localStore.lastUpdated && serverStore)) {
+        await this.pushToServer(localStore);
+        return { updated: false, source: 'local' };
+      }
+
+      if (serverStore && (serverTime > localTime || !localStore.lastUpdated)) {
+        this.saveStore(serverStore, true);
+        return { updated: true, source: 'server' };
+      }
+
+      if (!serverStore && localStore) {
+        await this.pushToServer(localStore);
+        return { updated: false, source: 'local' };
+      }
+
+      return { updated: false, source: 'none' };
+    } catch (err) {
+      console.warn('syncWithServer error, attempting direct cloud fallback:', err);
+      try {
+        const directData = await this.pullFromCloudDirect();
+        const localStore = this.loadStore();
+        if (directData && directData.lastUpdated) {
+          const cloudTime = new Date(directData.lastUpdated).getTime();
+          const localTime = localStore.lastUpdated ? new Date(localStore.lastUpdated).getTime() : 0;
+          if (cloudTime > localTime) {
+            this.saveStore(directData, true);
+            return { updated: true, source: 'server' };
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return { updated: false, source: 'none' };
+    }
+  },
+
+  generateMobileSyncUrl(): string {
+    if (typeof window === 'undefined') return '';
+    try {
+      const store = this.loadStore();
+      const jsonStr = JSON.stringify(store);
+      const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(jsonStr))));
+      const url = new URL(window.location.origin);
+      url.searchParams.set('sync_data', encoded);
+      return url.toString();
+    } catch (e) {
+      console.error('Failed to generate sync URL', e);
+      return window.location.origin;
+    }
+  },
+
+  applySyncData(encoded: string): boolean {
+    try {
+      const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.profile && parsed.projects) {
+        this.saveStore(parsed);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to apply sync data', e);
+      return false;
     }
   },
 

@@ -10,31 +10,51 @@ import {
   Lock,
   LogOut,
   Palette,
+  QrCode,
   RefreshCw,
   Save,
   Search,
+  Send,
   Share2,
   Shield,
   Sliders,
+  Smartphone,
+  Sparkles,
   Upload,
   User,
+  Wifi,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { MobileSyncModal } from '../components/layout/MobileSyncModal';
 import { useAdminData } from '../context/AdminDataContext';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import { portfolioDataService } from '../services/portfolioDataService';
+import { autoCreateJsonBinFn } from '../services/serverPortfolioService';
 import { SiteSettings } from '../types/portfolio';
 import { cn } from '@/lib/utils';
 
 export function SettingsView() {
-  const { settings, updateSettings, exportJSON, importJSON, resetToDefaults } = useAdminData();
+  const {
+    settings,
+    updateSettings,
+    exportJSON,
+    importJSON,
+    resetToDefaults,
+    syncStatus,
+    lastSyncTime,
+    forcePushToServer,
+    forcePullFromServer,
+  } = useAdminData();
   const { logout, getCredentials, updateCredentials, resetCredentials } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'social' | 'seo' | 'security' | 'backup'>('general');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [mobileSyncModalOpen, setMobileSyncModalOpen] = useState(false);
+  const [syncingServer, setSyncingServer] = useState(false);
   const [credentials, setCredentials] = useState(() => getCredentials());
   const [adminUsername, setAdminUsername] = useState(() => credentials.username);
   const [adminEmail, setAdminEmail] = useState(() => credentials.email);
@@ -47,6 +67,54 @@ export function SettingsView() {
   const [appearanceForm, setAppearanceForm] = useState(settings.appearance);
   const [socialForm, setSocialForm] = useState(settings.social);
   const [seoForm, setSeoForm] = useState(settings.seo);
+  const [cloudSyncForm, setCloudSyncForm] = useState<SiteSettings['cloudSync']>(
+    () =>
+      settings.cloudSync || {
+        provider: 'none',
+        autoSync: true,
+      },
+  );
+  const [testingCloud, setTestingCloud] = useState(false);
+  const [creatingBin, setCreatingBin] = useState(false);
+
+  const handleAutoCreateBin = async () => {
+    if (!cloudSyncForm?.jsonbinApiKey?.trim()) {
+      toast.error('Please enter your Master API Key first');
+      return;
+    }
+
+    setCreatingBin(true);
+    try {
+      const res = await autoCreateJsonBinFn({
+        data: {
+          apiKey: cloudSyncForm.jsonbinApiKey.trim(),
+          store: portfolioDataService.loadStore(),
+        },
+      });
+
+      if (res && res.success && res.binId) {
+        const updatedForm = {
+          ...cloudSyncForm,
+          jsonbinBinId: res.binId,
+        };
+        setCloudSyncForm(updatedForm);
+        const updatedSettings: SiteSettings = {
+          ...settings,
+          cloudSync: updatedForm,
+        };
+        updateSettings(updatedSettings);
+        toast.success(`Cloud Bin auto-created! ID: ${res.binId}`);
+        await forcePushToServer();
+      } else {
+        toast.error(res?.error || 'Failed to create bin. Please check your Master Key.');
+      }
+    } catch (err) {
+      console.error('Auto create bin error:', err);
+      toast.error('Could not connect to JSONBin.io');
+    } finally {
+      setCreatingBin(false);
+    }
+  };
 
   const handleSaveAll = () => {
     const updated: SiteSettings = {
@@ -54,6 +122,7 @@ export function SettingsView() {
       appearance: appearanceForm,
       social: socialForm,
       seo: seoForm,
+      cloudSync: cloudSyncForm,
     };
     updateSettings(updated);
   };
@@ -173,7 +242,7 @@ export function SettingsView() {
             { id: 'social', label: 'Social Links', icon: Share2 },
             { id: 'seo', label: 'SEO & Meta', icon: Search },
             { id: 'security', label: 'Security', icon: Shield },
-            { id: 'backup', label: 'Backup & Restore', icon: Database },
+            { id: 'backup', label: 'Mobile Sync & Backup', icon: Database },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -591,10 +660,265 @@ export function SettingsView() {
           {activeTab === 'backup' && (
             <div className="space-y-6 max-w-2xl">
               <div>
-                <h3 className="font-display text-base font-bold text-foreground">Export / Import Database</h3>
+                <h3 className="font-display text-base font-bold text-foreground">Mobile Sync & Backup</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Save a complete offline snapshot of all your portfolio content, projects, and credentials.
+                  Synchronize your portfolio changes to mobile devices in real time, or download an offline snapshot.
                 </p>
+              </div>
+
+              {/* LIVE SITE & MOBILE REAL-TIME SYNC */}
+              <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary">
+                      <Smartphone className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+                        <span>Live Site & Mobile Real-Time Sync</span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {syncStatus === 'syncing' ? 'Syncing...' : 'Connected'}
+                        </span>
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {lastSyncTime ? `Last active sync at ${lastSyncTime}` : 'All admin edits automatically sync to live website and mobile phones'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMobileSyncModalOpen(true)}
+                    className="gap-1.5 border-primary/30 text-primary text-xs hover:bg-primary/10"
+                  >
+                    <QrCode className="h-3.5 w-3.5" /> Mobile QR Code
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <Button
+                    size="sm"
+                    disabled={syncingServer}
+                    onClick={async () => {
+                      setSyncingServer(true);
+                      await forcePushToServer();
+                      setSyncingServer(false);
+                    }}
+                    className="gap-2 rounded-xl bg-primary text-primary-foreground text-xs"
+                  >
+                    {syncingServer ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    <span>Push Changes to Live Site & Mobile Now</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={syncingServer}
+                    onClick={async () => {
+                      setSyncingServer(true);
+                      await forcePullFromServer();
+                      setSyncingServer(false);
+                    }}
+                    className="gap-1.5 rounded-xl border-white/10 text-xs hover:bg-white/10"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${syncingServer ? 'animate-spin' : ''}`} />
+                    <span>Pull from Server</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* VERCEL CLOUD DATABASE SYNC SETUP */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-400">
+                    <Database className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-display text-sm font-bold text-foreground">
+                      Vercel Persistent Cloud Sync
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Keep your live Vercel domain and mobile website updated 24/7 with a persistent cloud database
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Select Cloud Provider</Label>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { id: 'none', label: 'Local Only', desc: 'Ephemeral' },
+                        { id: 'vercel-kv', label: 'Vercel KV', desc: 'Upstash (Fast)' },
+                        { id: 'jsonbin', label: 'JSONBin.io', desc: 'Free & Easy' },
+                        { id: 'supabase', label: 'Supabase', desc: 'Postgres REST' },
+                      ].map((prov) => (
+                        <button
+                          key={prov.id}
+                          type="button"
+                          onClick={() =>
+                            setCloudSyncForm((prev) => ({
+                              ...(prev || { autoSync: true }),
+                              provider: prov.id as any,
+                            }))
+                          }
+                          className={cn(
+                            'flex flex-col items-start rounded-xl border p-2.5 text-left transition-all',
+                            cloudSyncForm?.provider === prov.id
+                              ? 'border-primary bg-primary/10 text-foreground'
+                              : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:border-white/20',
+                          )}
+                        >
+                          <span className="text-xs font-bold text-foreground">{prov.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{prov.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Vercel KV Inputs */}
+                  {cloudSyncForm?.provider === 'vercel-kv' && (
+                    <div className="space-y-3 rounded-xl border border-white/5 bg-white/[0.02] p-3.5 text-xs">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">KV_REST_API_URL</Label>
+                        <Input
+                          placeholder="https://...upstash.io"
+                          value={cloudSyncForm.vercelKvUrl || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, vercelKvUrl: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">KV_REST_API_TOKEN</Label>
+                        <Input
+                          type="password"
+                          placeholder="AV..."
+                          value={cloudSyncForm.vercelKvToken || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, vercelKvToken: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        💡 <strong>How to get:</strong> In your Vercel Dashboard, click <em>Storage &rarr; Create Database &rarr; KV</em>. Copy the REST API credentials here.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* JSONBin Inputs */}
+                  {cloudSyncForm?.provider === 'jsonbin' && (
+                    <div className="space-y-3 rounded-xl border border-white/5 bg-white/[0.02] p-3.5 text-xs">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">JSONBin Bin ID</Label>
+                        <Input
+                          placeholder="e.g. 67ce..."
+                          value={cloudSyncForm.jsonbinBinId || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, jsonbinBinId: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">Master API Key</Label>
+                        <Input
+                          type="password"
+                          placeholder="$2a$10$..."
+                          value={cloudSyncForm.jsonbinApiKey || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, jsonbinApiKey: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                      <div className="pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={creatingBin || !cloudSyncForm.jsonbinApiKey?.trim()}
+                          onClick={handleAutoCreateBin}
+                          className="w-full gap-1.5 border-primary/40 bg-primary/10 text-primary text-xs hover:bg-primary/20"
+                        >
+                          {creatingBin ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          )}
+                          <span>
+                            {creatingBin ? 'Creating Cloud Bin...' : '✨ 1-Click Auto-Create Bin (Just enter Master Key)'}
+                          </span>
+                        </Button>
+                      </div>
+
+                      <p className="text-[10px] text-muted-foreground">
+                        💡 <strong>Easy Setup:</strong> Go to <a href="https://jsonbin.io/app/api-keys" target="_blank" rel="noreferrer" className="text-primary underline">jsonbin.io/app/api-keys</a>, copy your <strong>Master Key</strong>, paste it above, and click <em>1-Click Auto-Create Bin</em>. You don't need to manually create or save any JSON!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Supabase Inputs */}
+                  {cloudSyncForm?.provider === 'supabase' && (
+                    <div className="space-y-3 rounded-xl border border-white/5 bg-white/[0.02] p-3.5 text-xs">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">Supabase Project URL</Label>
+                        <Input
+                          placeholder="https://xyz.supabase.co"
+                          value={cloudSyncForm.supabaseUrl || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, supabaseUrl: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold">Anon Public Key</Label>
+                        <Input
+                          type="password"
+                          placeholder="eyJhbG..."
+                          value={cloudSyncForm.supabaseAnonKey || ''}
+                          onChange={(e) =>
+                            setCloudSyncForm((prev) => ({ ...prev!, supabaseAnonKey: e.target.value }))
+                          }
+                          className="h-8 rounded-lg border-white/10 bg-white/[0.03] text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <Button
+                      size="sm"
+                      disabled={testingCloud}
+                      onClick={async () => {
+                        setTestingCloud(true);
+                        const updated: SiteSettings = {
+                          ...settings,
+                          cloudSync: cloudSyncForm,
+                        };
+                        updateSettings(updated);
+                        const ok = await forcePushToServer();
+                        setTestingCloud(false);
+                        if (ok) {
+                          toast.success('Cloud Database connected & synced with live Vercel site!');
+                        }
+                      }}
+                      className="gap-2 bg-gradient-to-r from-violet-600 to-primary text-white text-xs font-semibold"
+                    >
+                      {testingCloud ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      <span>Save &amp; Connect Cloud Database</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -670,6 +994,12 @@ export function SettingsView() {
           resetToDefaults();
           setResetConfirmOpen(false);
         }}
+      />
+
+      {/* Mobile & Live Site Fast Sync Modal */}
+      <MobileSyncModal
+        open={mobileSyncModalOpen}
+        onOpenChange={setMobileSyncModalOpen}
       />
     </div>
   );

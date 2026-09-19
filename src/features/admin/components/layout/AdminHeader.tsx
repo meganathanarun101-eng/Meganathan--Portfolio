@@ -10,6 +10,7 @@ import {
   Moon,
   Search,
   Settings,
+  Smartphone,
   Sun,
   User,
 } from 'lucide-react';
@@ -23,8 +24,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminData } from '../../context/AdminDataContext';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import { CommandPalette } from './CommandPalette';
+import { MobileSyncModal } from './MobileSyncModal';
 import { cn } from '@/lib/utils';
 
 interface AdminHeaderProps {
@@ -35,8 +38,10 @@ export function AdminHeader({ onOpenMobileMenu }: AdminHeaderProps) {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const { user, logout } = useAuth();
+  const { syncStatus } = useAdminData();
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [mobileSyncModalOpen, setMobileSyncModalOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<'dark' | 'light' | 'system'>('dark');
 
   // Compute page title from path
@@ -105,6 +110,27 @@ export function AdminHeader({ onOpenMobileMenu }: AdminHeaderProps) {
             <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground">
               <Command className="h-2.5 w-2.5" /> K
             </kbd>
+          </button>
+
+          {/* Mobile & Live Site Sync Button */}
+          <button
+            type="button"
+            onClick={() => setMobileSyncModalOpen(true)}
+            title="Sync changes to live site and mobile"
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 transition-all hover:bg-emerald-500/20 hover:border-emerald-500/50"
+          >
+            <span className="relative flex h-2 w-2">
+              {syncStatus === 'syncing' ? (
+                <span className="h-full w-full rounded-full bg-amber-400 animate-pulse" />
+              ) : (
+                <>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </>
+              )}
+            </span>
+            <Smartphone className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Mobile Sync</span>
           </button>
 
           {/* View Live Portfolio Link */}
@@ -208,6 +234,9 @@ export function AdminHeader({ onOpenMobileMenu }: AdminHeaderProps) {
 
       {/* Global Command Palette Dialog */}
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+
+      {/* Mobile & Live Site Fast Sync Modal */}
+      <MobileSyncModal open={mobileSyncModalOpen} onOpenChange={setMobileSyncModalOpen} />
     </>
   );
 }

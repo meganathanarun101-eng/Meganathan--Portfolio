@@ -173,6 +173,17 @@ export interface ProfileData {
   };
 }
 
+export interface CloudSyncConfig {
+  provider: 'none' | 'vercel-kv' | 'jsonbin' | 'supabase';
+  vercelKvUrl?: string;
+  vercelKvToken?: string;
+  jsonbinBinId?: string;
+  jsonbinApiKey?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  autoSync: boolean;
+}
+
 export interface SiteSettings {
   general: {
     websiteName: string;
@@ -200,4 +211,5 @@ export interface SiteSettings {
     keywords: string;
     ogImage: string;
   };
+  cloudSync?: CloudSyncConfig;
 }
