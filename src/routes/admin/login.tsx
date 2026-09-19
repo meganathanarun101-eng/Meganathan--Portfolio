@@ -12,7 +12,6 @@ import {
   Lock,
   Shield,
   User,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +25,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/features/admin/context/AuthContext';
-import { authService } from '@/features/admin/services/authService';
 
 export const Route = createFileRoute('/admin/login')({
   head: () => ({
@@ -44,20 +42,16 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 function AdminLogin() {
-  const { login, getCredentials } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-  const currentCreds = getCredentials();
-  const isCustom = authService.isCustomCredentialsSet();
-
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -86,13 +80,6 @@ function AdminLogin() {
     } else {
       toast.error(result.error ?? 'Invalid username/email or password');
     }
-  };
-
-  const handleQuickFill = () => {
-    setValue('identifier', currentCreds.username);
-    setValue('password', currentCreds.password);
-    setValue('rememberMe', true);
-    toast.info(`Filled credentials for ${currentCreds.username}`);
   };
 
   const handleResetPassword = (e: React.FormEvent) => {
@@ -237,22 +224,6 @@ function AdminLogin() {
                 'Sign In to Dashboard'
               )}
             </Button>
-
-            {/* Autofill Helper */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleQuickFill}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-2.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-white/[0.05] hover:text-foreground"
-              >
-                <Zap className="h-3.5 w-3.5 text-amber-400" />
-                <span>
-                  {isCustom
-                    ? 'Autofill Saved Credentials'
-                    : 'Autofill Default Credentials (meganathan / admin123)'}
-                </span>
-              </button>
-            </div>
           </form>
 
           <div className="mt-8 border-t border-white/10 pt-4 text-center">

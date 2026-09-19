@@ -156,9 +156,7 @@ export const authService = {
     if (!isValid) {
       return {
         success: false,
-        error: isCustom
-          ? 'Invalid username/email or password.'
-          : 'Invalid credentials. Default: username "meganathan" (or admin@meganathan.dev) and password "admin123".',
+        error: 'Invalid username/email or password.',
       };
     }
 
