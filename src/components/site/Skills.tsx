@@ -76,6 +76,10 @@ export function Skills() {
           }))
       : DEFAULT_SKILLS.map((s, idx) => ({ id: `dsk-${idx}`, ...s }));
 
+  if (skillList.length === 0) {
+    return null;
+  }
+
   return (
     <Section
       id="skills"
@@ -89,17 +93,11 @@ export function Skills() {
     >
       <Reveal>
         <div className="glow-card rounded-[2rem] p-8 md:p-12">
-          {skillList.length === 0 ? (
-            <p className="text-center py-6 text-sm font-mono text-muted-foreground">
-              No skills currently listed.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
-              {skillList.map((s, i) => (
-                <Ring key={s.id || s.name} name={s.name} value={s.value} delay={i * 0.05} />
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
+            {skillList.map((s, i) => (
+              <Ring key={s.id || s.name} name={s.name} value={s.value} delay={i * 0.05} />
+            ))}
+          </div>
         </div>
       </Reveal>
     </Section>

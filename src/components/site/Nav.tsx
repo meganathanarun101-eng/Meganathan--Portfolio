@@ -19,11 +19,61 @@ export const NAV_ITEMS = [
 ];
 
 export function Nav() {
-  const { settings, profile } = useAdminData();
+  const {
+    settings,
+    profile,
+    skills,
+    projects,
+    experience,
+    services,
+    education,
+    certificates,
+    achievements,
+    testimonials,
+    blogPosts,
+  } = useAdminData();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("home");
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.2 });
+
+  const visibleNavItems = useMemo(() => {
+    return NAV_ITEMS.filter((item) => {
+      if (item.id === "skills") return (skills?.length ?? 0) > 0;
+      if (item.id === "projects") {
+        return (projects?.filter((p) => p.status === "published" || !p.status).length ?? 0) > 0;
+      }
+      if (item.id === "experience") {
+        return (experience?.filter((e) => e.published !== false).length ?? 0) > 0;
+      }
+      if (item.id === "services") {
+        return (services?.filter((s) => s.published !== false).length ?? 0) > 0;
+      }
+      if (item.id === "education") return (education?.length ?? 0) > 0;
+      if (item.id === "credentials") {
+        return (
+          (certificates?.length ?? 0) +
+            (achievements?.length ?? 0) +
+            (testimonials?.length ?? 0) >
+          0
+        );
+      }
+      if (item.id === "blog") {
+        return (blogPosts?.filter((b) => b.status === "published" || !b.status).length ?? 0) > 0;
+      }
+      return true;
+    });
+  }, [
+    skills,
+    projects,
+    experience,
+    services,
+    education,
+    certificates,
+    achievements,
+    testimonials,
+    blogPosts,
+  ]);
 
   const logoData = useMemo(() => {
     const raw = settings?.general?.logoText || profile?.fullName || "MEGA.dev";
@@ -44,12 +94,12 @@ export function Nav() {
       },
       { rootMargin: "-45% 0px -45% 0px", threshold: [0.01, 0.25, 0.6] },
     );
-    NAV_ITEMS.forEach(({ id }) => {
+    visibleNavItems.forEach(({ id }) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, []);
+  }, [visibleNavItems]);
 
   const go = (id: string) => {
     setOpen(false);
@@ -75,7 +125,7 @@ export function Nav() {
           </button>
 
           <ul className="hidden items-center gap-1 lg:flex">
-            {NAV_ITEMS.map((item) => (
+            {visibleNavItems.map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => go(item.id)}
@@ -133,7 +183,7 @@ export function Nav() {
               className="mx-auto mt-3 max-w-5xl overflow-hidden rounded-3xl glass p-3 lg:hidden"
             >
               <ul className="grid grid-cols-2 gap-1">
-                {NAV_ITEMS.map((item) => (
+                {visibleNavItems.map((item) => (
                   <li key={item.id}>
                     <button
                       onClick={() => go(item.id)}

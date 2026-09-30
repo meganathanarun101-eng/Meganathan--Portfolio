@@ -133,21 +133,17 @@ export function About() {
         </div>
       </Section>
 
-      <Section
-        id="education"
-        eyebrow="Education"
-        title={
-          <>
-            An interactive <span className="aurora-text">timeline</span>
-          </>
-        }
-        subtitle="Where curiosity turned into craft."
-      >
-        {educationList.length === 0 ? (
-          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
-            <p className="font-mono text-sm">No education records currently listed.</p>
-          </div>
-        ) : (
+      {educationList.length > 0 && (
+        <Section
+          id="education"
+          eyebrow="Education"
+          title={
+            <>
+              An interactive <span className="aurora-text">timeline</span>
+            </>
+          }
+          subtitle="Where curiosity turned into craft."
+        >
           <div className="relative pl-8 md:pl-0">
             <div
               aria-hidden
@@ -185,8 +181,8 @@ export function About() {
               ))}
             </div>
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
     </>
   );
 }

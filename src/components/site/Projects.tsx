@@ -112,6 +112,10 @@ export function Projects() {
 
   const list = publishedProjects.filter((p) => filter === "All" || p.category === filter);
 
+  if (publishedProjects.length === 0) {
+    return null;
+  }
+
   return (
     <Section
       id="projects"

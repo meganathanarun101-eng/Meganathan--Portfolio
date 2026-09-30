@@ -86,22 +86,22 @@ export function Work() {
         }))
       : DEFAULT_SERVICES.map((s, idx) => ({ id: `dsrv-${idx}`, ...s }));
 
+  if (experienceList.length === 0 && servicesList.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      <Section
-        id="experience"
-        eyebrow="Experience"
-        title={
-          <>
-            Where I&apos;ve <span className="aurora-text">shipped</span>
-          </>
-        }
-      >
-        {experienceList.length === 0 ? (
-          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
-            <p className="font-mono text-sm">No experience entries listed.</p>
-          </div>
-        ) : (
+      {experienceList.length > 0 && (
+        <Section
+          id="experience"
+          eyebrow="Experience"
+          title={
+            <>
+              Where I&apos;ve <span className="aurora-text">shipped</span>
+            </>
+          }
+        >
           <div className="grid gap-6 md:grid-cols-3">
             {experienceList.map((e, i) => (
               <Reveal key={e.id || e.role} delay={i * 0.1}>
@@ -127,24 +127,20 @@ export function Work() {
               </Reveal>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section
-        id="services"
-        eyebrow="Services"
-        title={
-          <>
-            How I can <span className="aurora-text">help</span>
-          </>
-        }
-        subtitle="End-to-end product engineering, or a focused hand on the part that's stuck."
-      >
-        {servicesList.length === 0 ? (
-          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
-            <p className="font-mono text-sm">No services listed.</p>
-          </div>
-        ) : (
+      {servicesList.length > 0 && (
+        <Section
+          id="services"
+          eyebrow="Services"
+          title={
+            <>
+              How I can <span className="aurora-text">help</span>
+            </>
+          }
+          subtitle="End-to-end product engineering, or a focused hand on the part that's stuck."
+        >
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {servicesList.map((s, i) => (
               <Reveal key={s.id || s.title} delay={i * 0.06}>
@@ -164,8 +160,8 @@ export function Work() {
               </Reveal>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
     </>
   );
 }

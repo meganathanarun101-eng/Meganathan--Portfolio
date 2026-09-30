@@ -107,63 +107,62 @@ export function Credentials() {
         }))
       : DEFAULT_POSTS;
 
+  const hasCredentials = certList.length > 0 || achList.length > 0 || testList.length > 0;
+
   return (
     <>
-      <Section
-        id="credentials"
-        eyebrow="Certificates & Achievements"
-        title={
-          <>
-            Proof of <span className="aurora-text">practice</span>
-          </>
-        }
-      >
-        {certList.length === 0 && achList.length === 0 ? (
-          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
-            <p className="font-mono text-sm">No credentials currently listed.</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="grid gap-5 sm:grid-cols-2">
-              {certList.map((c, i) => (
-                <Reveal key={c.id || c.title} delay={i * 0.05}>
-                  <TiltCard className="h-full p-6">
-                    <BadgeCheck className="h-5 w-5 text-primary" />
-                    <h3 className="mt-4 font-display text-base font-bold leading-snug">{c.title}</h3>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {c.issuer} · {c.year}
-                    </p>
-                  </TiltCard>
-                </Reveal>
-              ))}
-            </div>
-
-            <div className="space-y-5">
-              {achList.map((a, i) => {
-                const IconComp = getAchievementIcon(a.iconType);
-                return (
-                  <Reveal key={a.id || a.title} delay={i * 0.08}>
-                    <TiltCard className="flex items-start gap-5 p-7">
-                      <span
-                        className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
-                        style={{
-                          background: "color-mix(in oklab, var(--violet) 22%, transparent)",
-                          boxShadow: "var(--glow-violet)",
-                        }}
-                      >
-                        <IconComp className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <h3 className="font-display text-base font-bold">{a.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{a.detail}</p>
-                      </div>
+      {hasCredentials && (
+        <Section
+          id="credentials"
+          eyebrow="Certificates & Achievements"
+          title={
+            <>
+              Proof of <span className="aurora-text">practice</span>
+            </>
+          }
+        >
+          {(certList.length > 0 || achList.length > 0) && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2">
+                {certList.map((c, i) => (
+                  <Reveal key={c.id || c.title} delay={i * 0.05}>
+                    <TiltCard className="h-full p-6">
+                      <BadgeCheck className="h-5 w-5 text-primary" />
+                      <h3 className="mt-4 font-display text-base font-bold leading-snug">{c.title}</h3>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {c.issuer} · {c.year}
+                      </p>
                     </TiltCard>
                   </Reveal>
-                );
-              })}
+                ))}
+              </div>
+
+              <div className="space-y-5">
+                {achList.map((a, i) => {
+                  const IconComp = getAchievementIcon(a.iconType);
+                  return (
+                    <Reveal key={a.id || a.title} delay={i * 0.08}>
+                      <TiltCard className="flex items-start gap-5 p-7">
+                        <span
+                          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
+                          style={{
+                            background: "color-mix(in oklab, var(--violet) 22%, transparent)",
+                            boxShadow: "var(--glow-violet)",
+                          }}
+                        >
+                          <IconComp className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h3 className="font-display text-base font-bold">{a.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{a.detail}</p>
+                        </div>
+                      </TiltCard>
+                    </Reveal>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {testList.length > 0 && (
           <div className="mt-20 grid gap-6 md:grid-cols-3">
@@ -182,6 +181,7 @@ export function Credentials() {
           </div>
         )}
       </Section>
+      )}
 
       {postList.length > 0 && (
         <Section
