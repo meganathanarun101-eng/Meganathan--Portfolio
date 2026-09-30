@@ -55,10 +55,10 @@ export const authService = {
   },
 
   updateCredentials(params: {
-    username?: string;
-    email?: string;
+    username?: string | undefined;
+    email?: string | undefined;
     currentPassword: string;
-    newPassword?: string;
+    newPassword?: string | undefined;
   }): { success: boolean; error?: string } {
     if (typeof window === 'undefined') {
       return { success: false, error: 'Browser environment required.' };

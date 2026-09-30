@@ -54,11 +54,13 @@ export function Work() {
   const { experience, services } = useAdminData();
 
   const publishedExp = experience
-    ?.filter((e) => e.published !== false)
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    ? experience
+        .filter((e) => e.published !== false)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    : undefined;
 
   const experienceList =
-    publishedExp && publishedExp.length > 0
+    publishedExp !== undefined
       ? publishedExp.map((e) => ({
           id: e.id,
           role: e.position,
@@ -72,10 +74,10 @@ export function Work() {
         }))
       : DEFAULT_EXPERIENCE.map((e, idx) => ({ id: `dexp-${idx}`, ...e }));
 
-  const publishedServices = services?.filter((s) => s.published !== false);
+  const publishedServices = services ? services.filter((s) => s.published !== false) : undefined;
 
   const servicesList =
-    publishedServices && publishedServices.length > 0
+    publishedServices !== undefined
       ? publishedServices.map((s) => ({
           id: s.id,
           icon: ICON_MAP[s.iconName] || LayoutTemplate,
@@ -95,31 +97,37 @@ export function Work() {
           </>
         }
       >
-        <div className="grid gap-6 md:grid-cols-3">
-          {experienceList.map((e, i) => (
-            <Reveal key={e.id || e.role} delay={i * 0.1}>
-              <TiltCard className="h-full p-8">
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary">
-                  {e.period}
-                </p>
-                <h3 className="mt-4 font-display text-xl font-bold leading-snug">{e.role}</h3>
-                <p className="mt-1 text-sm text-foreground/75">{e.org}</p>
-                <ul className="mt-6 space-y-3">
-                  {e.points.map((p, pIdx) => (
-                    <li key={pIdx} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
-                      <span
-                        aria-hidden
-                        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ background: "var(--cyan)" }}
-                      />
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-              </TiltCard>
-            </Reveal>
-          ))}
-        </div>
+        {experienceList.length === 0 ? (
+          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
+            <p className="font-mono text-sm">No experience entries listed.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3">
+            {experienceList.map((e, i) => (
+              <Reveal key={e.id || e.role} delay={i * 0.1}>
+                <TiltCard className="h-full p-8">
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary">
+                    {e.period}
+                  </p>
+                  <h3 className="mt-4 font-display text-xl font-bold leading-snug">{e.role}</h3>
+                  <p className="mt-1 text-sm text-foreground/75">{e.org}</p>
+                  <ul className="mt-6 space-y-3">
+                    {e.points.map((p, pIdx) => (
+                      <li key={pIdx} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                        <span
+                          aria-hidden
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ background: "var(--cyan)" }}
+                        />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </TiltCard>
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section
@@ -132,25 +140,31 @@ export function Work() {
         }
         subtitle="End-to-end product engineering, or a focused hand on the part that's stuck."
       >
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {servicesList.map((s, i) => (
-            <Reveal key={s.id || s.title} delay={i * 0.06}>
-              <TiltCard className="h-full p-8">
-                <span
-                  className="inline-grid h-12 w-12 place-items-center rounded-2xl"
-                  style={{
-                    background: "color-mix(in oklab, var(--neon) 18%, transparent)",
-                    boxShadow: "var(--glow-neon)",
-                  }}
-                >
-                  <s.icon className="h-5 w-5 text-foreground" />
-                </span>
-                <h3 className="mt-6 font-display text-lg font-bold">{s.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
-              </TiltCard>
-            </Reveal>
-          ))}
-        </div>
+        {servicesList.length === 0 ? (
+          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
+            <p className="font-mono text-sm">No services listed.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {servicesList.map((s, i) => (
+              <Reveal key={s.id || s.title} delay={i * 0.06}>
+                <TiltCard className="h-full p-8">
+                  <span
+                    className="inline-grid h-12 w-12 place-items-center rounded-2xl"
+                    style={{
+                      background: "color-mix(in oklab, var(--neon) 18%, transparent)",
+                      boxShadow: "var(--glow-neon)",
+                    }}
+                  >
+                    <s.icon className="h-5 w-5 text-foreground" />
+                  </span>
+                  <h3 className="mt-6 font-display text-lg font-bold">{s.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
+                </TiltCard>
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
     </>
   );

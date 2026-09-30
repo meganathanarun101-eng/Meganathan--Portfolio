@@ -7,11 +7,11 @@ interface StatCardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
-  change?: number; // percentage, e.g. 12.5
-  comparisonText?: string;
-  badge?: string;
-  iconColor?: string;
-  className?: string;
+  change?: number | undefined; // percentage, e.g. 12.5
+  comparisonText?: string | undefined;
+  badge?: string | undefined;
+  iconColor?: string | undefined;
+  className?: string | undefined;
 }
 
 export function StatCard({

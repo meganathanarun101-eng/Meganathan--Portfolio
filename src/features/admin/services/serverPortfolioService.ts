@@ -5,8 +5,15 @@ import type { PortfolioDataStore } from './portfolioDataService';
 let inMemoryServerStore: PortfolioDataStore | null = null;
 let inMemoryLastUpdated: string = '';
 
+function isValidHttpUrl(raw?: string): boolean {
+  if (!raw || typeof raw !== 'string') return false;
+  const trimmed = raw.trim();
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+}
+
 // Helper: Vercel KV / Upstash Redis
 async function getFromVercelKv(url: string, token: string): Promise<PortfolioDataStore | null> {
+  if (!isValidHttpUrl(url) || !token?.trim()) return null;
   try {
     const endpoint = `${url.replace(/\/$/, '')}/get/meganathan_portfolio_store`;
     const res = await fetch(endpoint, {
@@ -24,6 +31,7 @@ async function getFromVercelKv(url: string, token: string): Promise<PortfolioDat
 }
 
 async function saveToVercelKv(url: string, token: string, data: PortfolioDataStore): Promise<boolean> {
+  if (!isValidHttpUrl(url) || !token?.trim()) return false;
   try {
     const endpoint = `${url.replace(/\/$/, '')}/set/meganathan_portfolio_store`;
     const res = await fetch(endpoint, {
@@ -116,6 +124,7 @@ export const autoCreateJsonBinFn = createServerFn({ method: 'POST' })
 
 // Helper: Supabase REST API
 async function getFromSupabase(url: string, anonKey: string): Promise<PortfolioDataStore | null> {
+  if (!isValidHttpUrl(url) || !anonKey?.trim()) return null;
   try {
     const endpoint = `${url.replace(/\/$/, '')}/rest/v1/portfolio_store?id=eq.default&select=data,lastUpdated`;
     const res = await fetch(endpoint, {
@@ -138,6 +147,7 @@ async function getFromSupabase(url: string, anonKey: string): Promise<PortfolioD
 }
 
 async function saveToSupabase(url: string, anonKey: string, data: PortfolioDataStore): Promise<boolean> {
+  if (!isValidHttpUrl(url) || !anonKey?.trim()) return false;
   try {
     const endpoint = `${url.replace(/\/$/, '')}/rest/v1/portfolio_store`;
     const res = await fetch(endpoint, {
@@ -164,45 +174,51 @@ async function saveToSupabase(url: string, anonKey: string, data: PortfolioDataS
 export const getPortfolioServerDataFn = createServerFn({ method: 'GET' })
   .handler(async () => {
     // 1. Check Vercel KV / Upstash environment variables
-    const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-    const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const kvUrl = process.env['KV_REST_API_URL'] || process.env['UPSTASH_REDIS_REST_URL'];
+    const kvToken = process.env['KV_REST_API_TOKEN'] || process.env['UPSTASH_REDIS_REST_TOKEN'];
     if (kvUrl && kvToken) {
       const kvData = await getFromVercelKv(kvUrl, kvToken);
       if (kvData) {
+        inMemoryServerStore = kvData;
+        inMemoryLastUpdated = kvData.lastUpdated || new Date().toISOString();
         return {
           success: true,
           store: kvData,
-          lastUpdated: kvData.lastUpdated || new Date().toISOString(),
+          lastUpdated: inMemoryLastUpdated,
           source: 'vercel-kv',
         };
       }
     }
 
     // 2. Check JSONBin environment variables
-    const jsonBinId = process.env.JSONBIN_BIN_ID;
-    const jsonBinKey = process.env.JSONBIN_API_KEY;
+    const jsonBinId = process.env['JSONBIN_BIN_ID'];
+    const jsonBinKey = process.env['JSONBIN_API_KEY'];
     if (jsonBinId && jsonBinKey) {
       const binData = await getFromJsonBin(jsonBinId, jsonBinKey);
       if (binData) {
+        inMemoryServerStore = binData;
+        inMemoryLastUpdated = binData.lastUpdated || new Date().toISOString();
         return {
           success: true,
           store: binData,
-          lastUpdated: binData.lastUpdated || new Date().toISOString(),
+          lastUpdated: inMemoryLastUpdated,
           source: 'jsonbin',
         };
       }
     }
 
     // 3. Check Supabase environment variables
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env['SUPABASE_URL'];
+    const supabaseKey = process.env['SUPABASE_ANON_KEY'];
     if (supabaseUrl && supabaseKey) {
       const sbData = await getFromSupabase(supabaseUrl, supabaseKey);
       if (sbData) {
+        inMemoryServerStore = sbData;
+        inMemoryLastUpdated = sbData.lastUpdated || new Date().toISOString();
         return {
           success: true,
           store: sbData,
-          lastUpdated: sbData.lastUpdated || new Date().toISOString(),
+          lastUpdated: inMemoryLastUpdated,
           source: 'supabase',
         };
       }
@@ -233,10 +249,12 @@ export const getPortfolioServerDataFn = createServerFn({ method: 'GET' })
         const filePath = path.join(process.cwd(), 'data', 'portfolio-store.json');
         const raw = await fs.readFile(filePath, 'utf-8');
         const parsed = JSON.parse(raw);
+        inMemoryServerStore = parsed as PortfolioDataStore;
+        inMemoryLastUpdated = parsed.lastUpdated || inMemoryLastUpdated || new Date().toISOString();
         return {
           success: true,
           store: parsed as PortfolioDataStore,
-          lastUpdated: parsed.lastUpdated || inMemoryLastUpdated || new Date().toISOString(),
+          lastUpdated: inMemoryLastUpdated,
           source: 'disk',
         };
       } catch {
@@ -263,22 +281,22 @@ export const savePortfolioServerDataFn = createServerFn({ method: 'POST' })
     let cloudSaved = false;
 
     // 1. Try Vercel KV / Upstash
-    const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || data.store.settings?.cloudSync?.vercelKvUrl;
-    const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || data.store.settings?.cloudSync?.vercelKvToken;
+    const kvUrl = process.env['KV_REST_API_URL'] || process.env['UPSTASH_REDIS_REST_URL'] || data.store.settings?.cloudSync?.vercelKvUrl;
+    const kvToken = process.env['KV_REST_API_TOKEN'] || process.env['UPSTASH_REDIS_REST_TOKEN'] || data.store.settings?.cloudSync?.vercelKvToken;
     if (kvUrl && kvToken) {
       cloudSaved = await saveToVercelKv(kvUrl, kvToken, inMemoryServerStore);
     }
 
     // 2. Try JSONBin
-    const jsonBinId = process.env.JSONBIN_BIN_ID || data.store.settings?.cloudSync?.jsonbinBinId;
-    const jsonBinKey = process.env.JSONBIN_API_KEY || data.store.settings?.cloudSync?.jsonbinApiKey;
+    const jsonBinId = process.env['JSONBIN_BIN_ID'] || data.store.settings?.cloudSync?.jsonbinBinId;
+    const jsonBinKey = process.env['JSONBIN_API_KEY'] || data.store.settings?.cloudSync?.jsonbinApiKey;
     if (jsonBinId && jsonBinKey && !cloudSaved) {
       cloudSaved = await saveToJsonBin(jsonBinId, jsonBinKey, inMemoryServerStore);
     }
 
     // 3. Try Supabase
-    const supabaseUrl = process.env.SUPABASE_URL || data.store.settings?.cloudSync?.supabaseUrl;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY || data.store.settings?.cloudSync?.supabaseAnonKey;
+    const supabaseUrl = process.env['SUPABASE_URL'] || data.store.settings?.cloudSync?.supabaseUrl;
+    const supabaseKey = process.env['SUPABASE_ANON_KEY'] || data.store.settings?.cloudSync?.supabaseAnonKey;
     if (supabaseUrl && supabaseKey && !cloudSaved) {
       cloudSaved = await saveToSupabase(supabaseUrl, supabaseKey, inMemoryServerStore);
     }

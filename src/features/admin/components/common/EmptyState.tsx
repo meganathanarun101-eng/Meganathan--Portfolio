@@ -7,9 +7,9 @@ interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  className?: string;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
+  className?: string | undefined;
 }
 
 export function EmptyState({

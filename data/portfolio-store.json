@@ -210,120 +210,7 @@
       "updatedAt": "2024-01-05T09:00:00.000Z"
     }
   ],
-  "skills": [
-    {
-      "id": "sk-1",
-      "name": "HTML",
-      "level": 41,
-      "category": "Frontend",
-      "sortOrder": 1,
-      "featured": true
-    },
-    {
-      "id": "sk-2",
-      "name": "CSS",
-      "level": 25,
-      "category": "Frontend",
-      "sortOrder": 2,
-      "featured": true
-    },
-    {
-      "id": "sk-3",
-      "name": "JavaScript",
-      "level": 58,
-      "category": "Programming",
-      "sortOrder": 3,
-      "featured": true
-    },
-    {
-      "id": "sk-4",
-      "name": "React",
-      "level": 91,
-      "category": "Frontend",
-      "sortOrder": 4,
-      "featured": true
-    },
-    {
-      "id": "sk-5",
-      "name": "Node.js",
-      "level": 86,
-      "category": "Backend",
-      "sortOrder": 5,
-      "featured": true
-    },
-    {
-      "id": "sk-6",
-      "name": "Express",
-      "level": 84,
-      "category": "Backend",
-      "sortOrder": 6,
-      "featured": true
-    },
-    {
-      "id": "sk-7",
-      "name": "MongoDB",
-      "level": 82,
-      "category": "Database",
-      "sortOrder": 7,
-      "featured": true
-    },
-    {
-      "id": "sk-8",
-      "name": "Python",
-      "level": 80,
-      "category": "Programming",
-      "sortOrder": 8,
-      "featured": true
-    },
-    {
-      "id": "sk-9",
-      "name": "Git",
-      "level": 88,
-      "category": "Tools",
-      "sortOrder": 9,
-      "featured": true
-    },
-    {
-      "id": "sk-10",
-      "name": "GitHub",
-      "level": 90,
-      "category": "Tools",
-      "sortOrder": 10,
-      "featured": true
-    },
-    {
-      "id": "sk-11",
-      "name": "SQL",
-      "level": 78,
-      "category": "Database",
-      "sortOrder": 11,
-      "featured": true
-    },
-    {
-      "id": "sk-12",
-      "name": "TypeScript",
-      "level": 85,
-      "category": "Programming",
-      "sortOrder": 12,
-      "featured": false
-    },
-    {
-      "id": "sk-13",
-      "name": "Tailwind CSS",
-      "level": 10,
-      "category": "Frontend",
-      "sortOrder": 13,
-      "featured": false
-    },
-    {
-      "id": "sk-14",
-      "name": "FastAPI",
-      "level": 75,
-      "category": "Backend",
-      "sortOrder": 14,
-      "featured": false
-    }
-  ],
+  "skills": [],
   "education": [
     {
       "id": "edu-1",
@@ -594,50 +481,7 @@
       "published": true
     }
   ],
-  "achievements": [
-    {
-      "id": "ach-1",
-      "title": "Winner — Smart Campus Hackathon",
-      "description": "Built an automated student attendance and face verification system in 24 hours under intense competition.",
-      "date": "2025",
-      "organization": "Anna University Zone Hackathon",
-      "link": "https://github.com/meganathan-r/hackathon-winner",
-      "iconType": "trophy",
-      "featured": true,
-      "published": true
-    },
-    {
-      "id": "ach-2",
-      "title": "Top 5% — National Coding Challenge",
-      "description": "Ranked among top performers out of 12,000+ collegiate participants in algorithmic problem solving.",
-      "date": "2024",
-      "organization": "National Tech Olympiad",
-      "iconType": "medal",
-      "featured": true,
-      "published": true
-    },
-    {
-      "id": "ach-3",
-      "title": "500+ DSA Problems Solved",
-      "description": "Consistent daily problem solving streak across LeetCode, HackerRank, and CodeChef focusing on graph theory and dynamic programming.",
-      "date": "2024 — Present",
-      "organization": "LeetCode & Competitive Platforms",
-      "link": "https://leetcode.com/demo",
-      "iconType": "star",
-      "featured": true,
-      "published": true
-    },
-    {
-      "id": "ach-4",
-      "title": "Tech Lead — College Dev Club",
-      "description": "Mentored 40+ junior developers through an intensive 8-week MERN bootcamp and guided 6 open-source final projects.",
-      "date": "2024",
-      "organization": "JKKN Dev Community",
-      "iconType": "award",
-      "featured": false,
-      "published": true
-    }
-  ],
+  "achievements": [],
   "resume": [
     {
       "id": "res-v1-2",
@@ -906,6 +750,6 @@
       "supabaseAnonKey": "admin123"
     }
   },
-  "lastUpdated": "2026-09-19T11:38:08.939Z",
-  "version": 8
+  "lastUpdated": "2026-09-30T10:32:54.620Z",
+  "version": 28
 }

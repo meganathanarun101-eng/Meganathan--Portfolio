@@ -73,7 +73,7 @@ export interface ServiceItem {
   description: string;
   iconName: string;
   features: string[];
-  startingPrice?: string;
+  startingPrice?: string | undefined;
   featured: boolean;
   published: boolean;
 }
@@ -83,9 +83,9 @@ export interface CertificateItem {
   name: string;
   issuingOrganization: string;
   issueDate: string;
-  credentialId?: string;
-  credentialUrl?: string;
-  certificateImage?: string;
+  credentialId?: string | undefined;
+  credentialUrl?: string | undefined;
+  certificateImage?: string | undefined;
   description: string;
   featured: boolean;
   published: boolean;
@@ -97,7 +97,7 @@ export interface AchievementItem {
   description: string;
   date: string;
   organization: string;
-  link?: string;
+  link?: string | undefined;
   iconType: 'medal' | 'trophy' | 'award' | 'star';
   featured: boolean;
   published: boolean;
@@ -139,10 +139,10 @@ export interface TestimonialItem {
   name: string;
   role: string;
   company: string;
-  profileImage?: string;
+  profileImage?: string | undefined;
   quote: string;
   rating: number; // 1-5
-  linkedinUrl?: string;
+  linkedinUrl?: string | undefined;
   featured: boolean;
   published: boolean;
   sortOrder: number;
@@ -163,7 +163,7 @@ export interface ProfileData {
     github: string;
     linkedin: string;
     instagram: string;
-    twitter?: string;
+    twitter?: string | undefined;
   };
   metrics: {
     projectsCompleted: number;
@@ -175,12 +175,12 @@ export interface ProfileData {
 
 export interface CloudSyncConfig {
   provider: 'none' | 'vercel-kv' | 'jsonbin' | 'supabase';
-  vercelKvUrl?: string;
-  vercelKvToken?: string;
-  jsonbinBinId?: string;
-  jsonbinApiKey?: string;
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
+  vercelKvUrl?: string | undefined;
+  vercelKvToken?: string | undefined;
+  jsonbinBinId?: string | undefined;
+  jsonbinApiKey?: string | undefined;
+  supabaseUrl?: string | undefined;
+  supabaseAnonKey?: string | undefined;
   autoSync: boolean;
 }
 
@@ -211,5 +211,5 @@ export interface SiteSettings {
     keywords: string;
     ogImage: string;
   };
-  cloudSync?: CloudSyncConfig;
+  cloudSync?: CloudSyncConfig | undefined;
 }

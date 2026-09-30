@@ -88,13 +88,14 @@ export function Contact() {
     try {
       saveMessage({
         id: `msg-${Date.now()}`,
-        name,
+        senderName: name,
         email: senderEmail,
         subject: `Portfolio enquiry from ${name}`,
         message,
+        date: new Date().toISOString(),
         status: "unread",
+        priority: "normal",
         starred: false,
-        createdAt: new Date().toISOString(),
       });
     } catch (err) {
       console.error("Failed to save message to admin inbox", err);

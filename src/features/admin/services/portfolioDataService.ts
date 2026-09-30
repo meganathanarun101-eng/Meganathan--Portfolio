@@ -22,6 +22,7 @@ import {
   CloudSyncConfig,
 } from '../types/portfolio';
 import { ContactMessage, AdminNotification } from '../types/messages';
+import { authService } from './authService';
 import { getPortfolioServerDataFn, savePortfolioServerDataFn } from './serverPortfolioService';
 
 const STORAGE_KEY_PORTFOLIO = 'meganathan_admin_portfolio_data_v1';
@@ -769,7 +770,6 @@ export const portfolioDataService = {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_PORTFOLIO);
       if (!raw) {
-        this.saveStore(INITIAL_PORTFOLIO_DATA);
         return INITIAL_PORTFOLIO_DATA;
       }
       return JSON.parse(raw);
@@ -804,13 +804,15 @@ export const portfolioDataService = {
     const cfg = data.settings?.cloudSync;
     if (!cfg || cfg.provider === 'none') return false;
 
+    const isValidHttp = (url?: string) => Boolean(url && (url.startsWith('http://') || url.startsWith('https://')));
+
     try {
-      if (cfg.provider === 'vercel-kv' && cfg.vercelKvUrl && cfg.vercelKvToken) {
-        const endpoint = `${cfg.vercelKvUrl.replace(/\/$/, '')}/set/meganathan_portfolio_store`;
+      if (cfg.provider === 'vercel-kv' && isValidHttp(cfg.vercelKvUrl) && cfg.vercelKvToken?.trim()) {
+        const endpoint = `${cfg.vercelKvUrl!.replace(/\/$/, '')}/set/meganathan_portfolio_store`;
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${cfg.vercelKvToken}`,
+            Authorization: `Bearer ${cfg.vercelKvToken.trim()}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(data),
@@ -818,24 +820,24 @@ export const portfolioDataService = {
         return res.ok;
       }
 
-      if (cfg.provider === 'jsonbin' && cfg.jsonbinBinId && cfg.jsonbinApiKey) {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.jsonbinBinId}`, {
+      if (cfg.provider === 'jsonbin' && cfg.jsonbinBinId?.trim() && cfg.jsonbinApiKey?.trim()) {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.jsonbinBinId.trim()}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'X-Master-Key': cfg.jsonbinApiKey,
+            'X-Master-Key': cfg.jsonbinApiKey.trim(),
           },
           body: JSON.stringify(data),
         });
         return res.ok;
       }
 
-      if (cfg.provider === 'supabase' && cfg.supabaseUrl && cfg.supabaseAnonKey) {
-        const res = await fetch(`${cfg.supabaseUrl.replace(/\/$/, '')}/rest/v1/portfolio_store`, {
+      if (cfg.provider === 'supabase' && isValidHttp(cfg.supabaseUrl) && cfg.supabaseAnonKey?.trim()) {
+        const res = await fetch(`${cfg.supabaseUrl!.replace(/\/$/, '')}/rest/v1/portfolio_store`, {
           method: 'POST',
           headers: {
-            apikey: cfg.supabaseAnonKey,
-            Authorization: `Bearer ${cfg.supabaseAnonKey}`,
+            apikey: cfg.supabaseAnonKey.trim(),
+            Authorization: `Bearer ${cfg.supabaseAnonKey.trim()}`,
             'Content-Type': 'application/json',
             Prefer: 'resolution=merge-duplicates',
           },
@@ -857,11 +859,13 @@ export const portfolioDataService = {
     const config = cfg || this.loadStore().settings?.cloudSync;
     if (!config || config.provider === 'none') return null;
 
+    const isValidHttp = (url?: string) => Boolean(url && (url.startsWith('http://') || url.startsWith('https://')));
+
     try {
-      if (config.provider === 'vercel-kv' && config.vercelKvUrl && config.vercelKvToken) {
-        const endpoint = `${config.vercelKvUrl.replace(/\/$/, '')}/get/meganathan_portfolio_store`;
+      if (config.provider === 'vercel-kv' && isValidHttp(config.vercelKvUrl) && config.vercelKvToken?.trim()) {
+        const endpoint = `${config.vercelKvUrl!.replace(/\/$/, '')}/get/meganathan_portfolio_store`;
         const res = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${config.vercelKvToken}` },
+          headers: { Authorization: `Bearer ${config.vercelKvToken.trim()}` },
           cache: 'no-store',
         });
         if (!res.ok) return null;
@@ -870,9 +874,9 @@ export const portfolioDataService = {
         return typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
       }
 
-      if (config.provider === 'jsonbin' && config.jsonbinBinId && config.jsonbinApiKey) {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${config.jsonbinBinId}/latest`, {
-          headers: { 'X-Master-Key': config.jsonbinApiKey },
+      if (config.provider === 'jsonbin' && config.jsonbinBinId?.trim() && config.jsonbinApiKey?.trim()) {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${config.jsonbinBinId.trim()}/latest`, {
+          headers: { 'X-Master-Key': config.jsonbinApiKey.trim() },
           cache: 'no-store',
         });
         if (!res.ok) return null;
@@ -880,12 +884,12 @@ export const portfolioDataService = {
         return json.record as PortfolioDataStore;
       }
 
-      if (config.provider === 'supabase' && config.supabaseUrl && config.supabaseAnonKey) {
-        const endpoint = `${config.supabaseUrl.replace(/\/$/, '')}/rest/v1/portfolio_store?id=eq.default&select=data,lastUpdated`;
+      if (config.provider === 'supabase' && isValidHttp(config.supabaseUrl) && config.supabaseAnonKey?.trim()) {
+        const endpoint = `${config.supabaseUrl!.replace(/\/$/, '')}/rest/v1/portfolio_store?id=eq.default&select=data,lastUpdated`;
         const res = await fetch(endpoint, {
           headers: {
-            apikey: config.supabaseAnonKey,
-            Authorization: `Bearer ${config.supabaseAnonKey}`,
+            apikey: config.supabaseAnonKey.trim(),
+            Authorization: `Bearer ${config.supabaseAnonKey.trim()}`,
           },
           cache: 'no-store',
         });
@@ -916,12 +920,18 @@ export const portfolioDataService = {
           lastUpdated: timestamp,
         },
       });
-      return { success: true, lastUpdated: res.lastUpdated };
+      return {
+        success: true,
+        ...(res.lastUpdated ? { lastUpdated: res.lastUpdated } : {}),
+      };
     } catch (err) {
       console.warn('Failed to push portfolio to server, attempting direct cloud fallback:', err);
       const storeToSave = data || this.loadStore();
       const directSuccess = await this.pushToCloudDirect(storeToSave);
-      return { success: directSuccess, lastUpdated: storeToSave.lastUpdated };
+      return {
+        success: directSuccess,
+        ...(storeToSave.lastUpdated ? { lastUpdated: storeToSave.lastUpdated } : {}),
+      };
     }
   },
 
@@ -931,6 +941,7 @@ export const portfolioDataService = {
     try {
       const serverRes = await getPortfolioServerDataFn();
       const localStore = this.loadStore();
+      const isAdmin = authService.isAuthenticated();
 
       let serverStore = serverRes && serverRes.success ? serverRes.store : null;
       let serverTime = serverRes && serverRes.lastUpdated ? new Date(serverRes.lastUpdated).getTime() : 0;
@@ -945,6 +956,18 @@ export const portfolioDataService = {
         }
       }
 
+      // 1. Regular visitor (not logged in as admin): ALWAYS adopt server store
+      if (!isAdmin) {
+        if (serverStore) {
+          if (serverStore.lastUpdated !== localStore.lastUpdated) {
+            this.saveStore(serverStore, true);
+            return { updated: true, source: 'server' };
+          }
+        }
+        return { updated: false, source: 'none' };
+      }
+
+      // 2. Authenticated Admin:
       if (forcePush || (localTime > serverTime && localStore.lastUpdated && serverStore)) {
         await this.pushToServer(localStore);
         return { updated: false, source: 'local' };

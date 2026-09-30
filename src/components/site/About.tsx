@@ -40,7 +40,7 @@ export function About() {
       ];
 
   const educationList =
-    education && education.length > 0
+    education !== undefined
       ? education
           .slice()
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -143,43 +143,49 @@ export function About() {
         }
         subtitle="Where curiosity turned into craft."
       >
-        <div className="relative pl-8 md:pl-0">
-          <div
-            aria-hidden
-            className="absolute bottom-0 left-2 top-0 w-px md:left-1/2"
-            style={{ background: "var(--gradient-aurora)", opacity: 0.55 }}
-          />
-          <div className="space-y-10 md:space-y-16">
-            {educationList.map((e, i) => (
-              <Reveal key={e.id || e.title} delay={i * 0.1}>
-                <div
-                  className={`relative md:flex md:items-center md:gap-10 ${
-                    i % 2 ? "md:flex-row-reverse" : ""
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute -left-[1.65rem] top-6 h-3 w-3 rounded-full md:left-1/2 md:-translate-x-1/2"
-                    style={{ background: "var(--cyan)", boxShadow: "var(--glow-neon)" }}
-                  />
-                  <div className="md:w-1/2">
-                    <TiltCard className="p-7">
-                      <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary">
-                        {e.year}
-                      </p>
-                      <h3 className="mt-3 font-display text-xl font-bold">{e.title}</h3>
-                      <p className="mt-1 text-sm text-foreground/80">{e.place}</p>
-                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                        {e.detail}
-                      </p>
-                    </TiltCard>
-                  </div>
-                  <div className="hidden md:block md:w-1/2" />
-                </div>
-              </Reveal>
-            ))}
+        {educationList.length === 0 ? (
+          <div className="glow-card rounded-3xl p-10 text-center text-muted-foreground">
+            <p className="font-mono text-sm">No education records currently listed.</p>
           </div>
-        </div>
+        ) : (
+          <div className="relative pl-8 md:pl-0">
+            <div
+              aria-hidden
+              className="absolute bottom-0 left-2 top-0 w-px md:left-1/2"
+              style={{ background: "var(--gradient-aurora)", opacity: 0.55 }}
+            />
+            <div className="space-y-10 md:space-y-16">
+              {educationList.map((e, i) => (
+                <Reveal key={e.id || e.title} delay={i * 0.1}>
+                  <div
+                    className={`relative md:flex md:items-center md:gap-10 ${
+                      i % 2 ? "md:flex-row-reverse" : ""
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute -left-[1.65rem] top-6 h-3 w-3 rounded-full md:left-1/2 md:-translate-x-1/2"
+                      style={{ background: "var(--cyan)", boxShadow: "var(--glow-neon)" }}
+                    />
+                    <div className="md:w-1/2">
+                      <TiltCard className="p-7">
+                        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary">
+                          {e.year}
+                        </p>
+                        <h3 className="mt-3 font-display text-xl font-bold">{e.title}</h3>
+                        <p className="mt-1 text-sm text-foreground/80">{e.place}</p>
+                        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                          {e.detail}
+                        </p>
+                      </TiltCard>
+                    </div>
+                    <div className="hidden md:block md:w-1/2" />
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>
     </>
   );

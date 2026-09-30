@@ -89,20 +89,18 @@ export function Projects() {
   const { projects } = useAdminData();
 
   const publishedProjects: ProjectDisplay[] = useMemo(() => {
-    const list = projects?.filter((p) => p.status === "published" || !p.status);
-    if (list && list.length > 0) {
-      return list.map((p) => ({
-        id: p.id,
-        title: p.title,
-        blurb: p.shortDescription || p.fullDescription || "",
-        image: p.image || p1,
-        tags: Array.isArray(p.tags) ? p.tags : [],
-        category: p.category || "Full Stack",
-        demo: p.demoUrl || "",
-        repo: p.githubUrl || "",
-      }));
-    }
-    return DEFAULT_PROJECTS;
+    if (projects === undefined) return DEFAULT_PROJECTS;
+    const list = projects.filter((p) => p.status === "published" || !p.status);
+    return list.map((p) => ({
+      id: p.id,
+      title: p.title,
+      blurb: p.shortDescription || p.fullDescription || "",
+      image: p.image || p1,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      category: p.category || "Full Stack",
+      demo: p.demoUrl || "",
+      repo: p.githubUrl || "",
+    }));
   }, [projects]);
 
   const filterCategories = useMemo(() => {
@@ -125,34 +123,41 @@ export function Projects() {
       }
       subtitle="A few builds that pushed me — each one shipped, tested and iterated on."
     >
-      <Reveal className="mb-10">
-        <div className="inline-flex flex-wrap gap-2 rounded-full glass p-1.5">
-          {filterCategories.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "relative rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
-                filter === f ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {filter === f && (
-                <motion.span
-                  layoutId="filter-pill"
-                  className="absolute inset-0 -z-10 rounded-full"
-                  style={{ background: "var(--gradient-aurora)", opacity: 0.9 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 30 }}
-                />
-              )}
-              {f}
-            </button>
-          ))}
-        </div>
-      </Reveal>
+      {publishedProjects.length > 0 && (
+        <Reveal className="mb-10">
+          <div className="inline-flex flex-wrap gap-2 rounded-full glass p-1.5">
+            {filterCategories.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "relative rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
+                  filter === f ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {filter === f && (
+                  <motion.span
+                    layoutId="filter-pill"
+                    className="absolute inset-0 -z-10 rounded-full"
+                    style={{ background: "var(--gradient-aurora)", opacity: 0.9 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                  />
+                )}
+                {f}
+              </button>
+            ))}
+          </div>
+        </Reveal>
+      )}
 
-      <motion.div layout className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
-        <AnimatePresence mode="popLayout">
-          {list.map((p) => (
+      {list.length === 0 ? (
+        <div className="glow-card rounded-3xl p-12 text-center text-muted-foreground">
+          <p className="font-mono text-sm">No projects currently available.</p>
+        </div>
+      ) : (
+        <motion.div layout className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+          <AnimatePresence mode="popLayout">
+            {list.map((p) => (
             <motion.article
               key={p.id || p.title}
               layout
@@ -225,6 +230,7 @@ export function Projects() {
           ))}
         </AnimatePresence>
       </motion.div>
+      )}
     </Section>
   );
 }

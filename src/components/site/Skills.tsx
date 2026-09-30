@@ -65,7 +65,7 @@ export function Skills() {
   const { skills } = useAdminData();
 
   const skillList =
-    skills && skills.length > 0
+    skills !== undefined
       ? skills
           .slice()
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -89,11 +89,17 @@ export function Skills() {
     >
       <Reveal>
         <div className="glow-card rounded-[2rem] p-8 md:p-12">
-          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
-            {skillList.map((s, i) => (
-              <Ring key={s.id || s.name} name={s.name} value={s.value} delay={i * 0.05} />
-            ))}
-          </div>
+          {skillList.length === 0 ? (
+            <p className="text-center py-6 text-sm font-mono text-muted-foreground">
+              No skills currently listed.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
+              {skillList.map((s, i) => (
+                <Ring key={s.id || s.name} name={s.name} value={s.value} delay={i * 0.05} />
+              ))}
+            </div>
+          )}
         </div>
       </Reveal>
     </Section>

@@ -12,10 +12,10 @@ interface AuthContextType {
   updateProfile: (updates: Partial<AdminUser>) => void;
   getCredentials: () => AdminCredentials;
   updateCredentials: (params: {
-    username?: string;
-    email?: string;
+    username?: string | undefined;
+    email?: string | undefined;
     currentPassword: string;
-    newPassword?: string;
+    newPassword?: string | undefined;
   }) => { success: boolean; error?: string };
   resetCredentials: () => void;
 }
@@ -61,10 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCredentials = (params: {
-    username?: string;
-    email?: string;
+    username?: string | undefined;
+    email?: string | undefined;
     currentPassword: string;
-    newPassword?: string;
+    newPassword?: string | undefined;
   }) => {
     const res = authService.updateCredentials(params);
     if (res.success && session) {

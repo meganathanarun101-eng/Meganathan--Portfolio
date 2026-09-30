@@ -73,7 +73,7 @@ export function AdminSidebar({
       title: 'Messages',
       href: '/admin/messages',
       icon: Mail,
-      badgeCount: unreadMessages > 0 ? unreadMessages : undefined,
+      ...(unreadMessages > 0 ? { badgeCount: unreadMessages } : {}),
     },
     { title: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { title: 'Settings', href: '/admin/settings', icon: Settings },
