@@ -210,120 +210,7 @@
       "updatedAt": "2024-01-05T09:00:00.000Z"
     }
   ],
-  "skills": [
-    {
-      "id": "sk-1",
-      "name": "HTML",
-      "level": 95,
-      "category": "Frontend",
-      "sortOrder": 1,
-      "featured": true
-    },
-    {
-      "id": "sk-2",
-      "name": "CSS",
-      "level": 92,
-      "category": "Frontend",
-      "sortOrder": 2,
-      "featured": true
-    },
-    {
-      "id": "sk-3",
-      "name": "JavaScript",
-      "level": 90,
-      "category": "Programming",
-      "sortOrder": 3,
-      "featured": true
-    },
-    {
-      "id": "sk-4",
-      "name": "React",
-      "level": 91,
-      "category": "Frontend",
-      "sortOrder": 4,
-      "featured": true
-    },
-    {
-      "id": "sk-5",
-      "name": "Node.js",
-      "level": 86,
-      "category": "Backend",
-      "sortOrder": 5,
-      "featured": true
-    },
-    {
-      "id": "sk-6",
-      "name": "Express",
-      "level": 84,
-      "category": "Backend",
-      "sortOrder": 6,
-      "featured": true
-    },
-    {
-      "id": "sk-7",
-      "name": "MongoDB",
-      "level": 82,
-      "category": "Database",
-      "sortOrder": 7,
-      "featured": true
-    },
-    {
-      "id": "sk-8",
-      "name": "Python",
-      "level": 80,
-      "category": "Programming",
-      "sortOrder": 8,
-      "featured": true
-    },
-    {
-      "id": "sk-9",
-      "name": "Git",
-      "level": 88,
-      "category": "Tools",
-      "sortOrder": 9,
-      "featured": true
-    },
-    {
-      "id": "sk-10",
-      "name": "GitHub",
-      "level": 90,
-      "category": "Tools",
-      "sortOrder": 10,
-      "featured": true
-    },
-    {
-      "id": "sk-11",
-      "name": "SQL",
-      "level": 78,
-      "category": "Database",
-      "sortOrder": 11,
-      "featured": true
-    },
-    {
-      "id": "sk-12",
-      "name": "TypeScript",
-      "level": 85,
-      "category": "Programming",
-      "sortOrder": 12,
-      "featured": false
-    },
-    {
-      "id": "sk-13",
-      "name": "Tailwind CSS",
-      "level": 94,
-      "category": "Frontend",
-      "sortOrder": 13,
-      "featured": false
-    },
-    {
-      "id": "sk-14",
-      "name": "FastAPI",
-      "level": 75,
-      "category": "Backend",
-      "sortOrder": 14,
-      "featured": false
-    }
-  ],
+  "skills": [],
   "education": [
     {
       "id": "edu-1",
@@ -863,6 +750,6 @@
       "supabaseAnonKey": "admin123"
     }
   },
-  "lastUpdated": "2026-09-30T15:18:00.000Z",
-  "version": 29
+  "lastUpdated": "2026-09-30T16:27:45.216Z",
+  "version": 48
 }

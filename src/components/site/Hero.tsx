@@ -110,7 +110,7 @@ export function Hero() {
             transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="mt-7 font-display text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-7xl xl:text-8xl"
           >
-            <span className="block text-muted-foreground/80">𝙃𝙞-𝙡𝙤,𝙄 𝙖𝙢</span>
+            <span className="block text-muted-foreground/80">𝙃𝙞,𝙄 𝙖𝙢</span>
             <span
               className="mt-2 block aurora-text"
               style={{ textShadow: "0 0 80px color-mix(in oklab, var(--violet) 40%, transparent)" }}
